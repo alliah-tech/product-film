@@ -1099,7 +1099,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
         label.textContent = trk.title + ' — ' + (trk.creator || '?') + ' [' + trk.license + ']';
         var use = document.createElement('button');
         use.textContent = 'Usar';
-        use.addEventListener('click', function () { $('#mp-list').querySelectorAll('button').forEach(function (b) { b.disabled = true; }); pickApiTrack(trk); });
+        use.addEventListener('click', function () { $('#mp-list').querySelectorAll('button').forEach(function (b) { b.disabled = true; }); MUSIC.pending = pickApiTrack(trk); });
         row.appendChild(label); row.appendChild(use);
         $('#mp-list').appendChild(row);
       });

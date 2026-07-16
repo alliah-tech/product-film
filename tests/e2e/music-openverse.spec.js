@@ -52,3 +52,25 @@ test('CORS bloqueado vira rota element e arma áudio da guia no REC', async ({ p
   await page.waitForFunction(() => window.__film.studio.state === 'idle', null, { timeout: 10000 });
   expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
 });
+
+test('REC logo após "Usar" ainda grava com áudio (race api)', async ({ page }) => {
+  /* atrasa o áudio CORS-ok para garantir que a seleção ainda está pendente no REC */
+  await page.route('**/tests/fixtures/track.wav', async (r) => {
+    await new Promise((res) => setTimeout(res, 1500));
+    r.continue();
+  });
+  await page.goto(PAGE);
+  await page.evaluate(() => { window.__film.studio.autoDownload = false; });
+  await page.click('#st-music');
+  await page.check('#mp-api-radio');
+  await page.fill('#mp-q', 'x');
+  await page.click('#mp-go');
+  await page.locator('#mp-list .mp-tk button').first().click();
+  /* NÃO espera a rota resolver */
+  await page.click('#mp-close');
+  await page.evaluate(() => window.__film.studio.rec('full'));
+  await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 25000 });
+  await page.evaluate(() => window.__film.studio.stop());
+  await page.waitForFunction(() => window.__film.studio.state === 'idle' && !!window.__film.studio.lastTake, null, { timeout: 10000 });
+  expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
+});
