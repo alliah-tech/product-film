@@ -9,7 +9,7 @@
     {
       "name": "product-film",
       "description": "Constrói um HTML único que É o vídeo de demo: réplica fiel do produto que se navega sozinha (cursor, legendas, zoom, loop). Você só grava a tela.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "category": "productivity",
       "source": "./plugins/product-film"
     }
