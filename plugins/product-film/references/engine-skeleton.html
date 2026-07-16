@@ -127,6 +127,33 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 #fs-hint b { color: var(--color-text); }
 #fs-hint .row { display: flex; gap: 8px; margin-top: 10px; }
 #fs-hint button { border: 1px solid var(--color-border-hover); background: transparent; color: var(--color-text); border-radius: var(--radius-full); padding: 6px 13px; font-size: 12.5px; cursor: pointer; }
+
+/* ============ STUDIO (mobília pronta — normalmente não mexer) ============ */
+.s-studio { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 13px; }
+.stbtn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--color-border-hover); background: var(--color-surface); color: var(--color-text); border-radius: var(--radius-full); padding: 8px 16px; font-family: var(--font-mono); font-size: 13px; cursor: pointer; transition: border-color .2s; }
+.stbtn:hover { border-color: var(--color-accent); }
+.stbtn .rec-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-accent); }
+#st-nohint { max-width: 560px; color: var(--color-text-dim); font-family: var(--font-body); font-size: 13px; line-height: 1.5; }
+#st-toast { position: fixed; right: 18px; bottom: 18px; z-index: 210; display: none; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(10,10,24,.95); border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: 12.5px; color: var(--color-text); }
+#st-toast.on { display: flex; }
+#st-toast button { border: 1px solid var(--color-border-hover); background: transparent; color: var(--color-text); border-radius: var(--radius-full); padding: 4px 10px; font-size: 12px; cursor: pointer; }
+#st-toast button:disabled { opacity: .4; cursor: default; }
+#music-panel, #gif-panel { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 400; display: none; flex-direction: column; gap: 10px; width: 460px; max-height: 80vh; overflow: auto; padding: 18px 20px; background: rgba(10,10,24,.97); border: 1px solid var(--color-border-hover); border-radius: var(--radius-lg); font-family: var(--font-body); font-size: 14px; color: var(--color-text); }
+#music-panel.on, #gif-panel.on { display: flex; }
+.mp-title, .gp-title { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
+.mp-row { display: flex; align-items: center; gap: 8px; }
+.mp-search { display: flex; gap: 8px; }
+.mp-search input, #music-panel input[type=text] { flex: 1; background: var(--color-surface-code); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); padding: 6px 10px; }
+#mp-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow: auto; }
+#mp-list .mp-tk { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 13px; }
+#music-panel button, #gif-panel button, #gif-panel select { border: 1px solid var(--color-border-hover); background: var(--color-surface); color: var(--color-text); border-radius: var(--radius-md); padding: 5px 10px; font-size: 12.5px; cursor: pointer; }
+.mp-vol { display: flex; align-items: center; gap: 10px; }
+.mp-note, .gp-dim { color: var(--color-text-muted); font-size: 12.5px; }
+.gp-row { display: flex; align-items: center; gap: 10px; }
+#gp-prog { height: 4px; background: rgba(42,42,74,.5); border-radius: 2px; overflow: hidden; display: none; }
+#gp-prog.on { display: block; }
+#gp-prog i { display: block; height: 100%; width: 0; background: var(--color-accent); }
+#gp-from, #gp-to { width: 70px; background: var(--color-surface-code); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); padding: 5px 8px; }
 </style>
 
 <div id="app">
@@ -165,6 +192,12 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
           <button class="cutbtn" data-cut="ph"><span class="cb-t">Short loop &#9656;</span><span class="cb-d">Loop mudo ~20s para Product Hunt.</span></button>
         </div>
         <div class="s-hints"><span><b>F</b>fullscreen</span><span><b>Space</b>play/pause</span><span><b>R</b>restart</span><span><b>&larr;&nbsp;&rarr;</b>&plusmn;2s</span><span><b>Esc</b>pause</span></div>
+        <div class="s-studio" id="st-row">
+          <button class="stbtn" id="st-rec"><span class="rec-dot"></span>Gravar take</button>
+          <button class="stbtn" id="st-cutsel">FULL</button>
+          <button class="stbtn" id="st-music">&#9834; <span id="st-music-name">Nenhuma</span></button>
+          <span id="st-nohint" style="display:none">Gravação in-page indisponível neste preview &mdash; baixe o HTML e abra localmente no Chrome. A música-tema continua disponível.</span>
+        </div>
       </div>
     </div>
   </div>
@@ -175,6 +208,36 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     <span class="time" id="c-time">0.0 / 0.0</span>
     <button id="c-cut">Cut: FULL</button>
     <button id="c-full">&#x26F6;</button>
+    <button id="c-rec">&#9679; REC</button>
+  </div>
+
+  <div id="st-toast"><span id="st-toast-msg"></span><button id="tt-dl">Baixar de novo</button><button id="tt-gif">Gerar GIF</button><button id="tt-rerec">Regravar</button><button id="tt-x">&times;</button></div>
+
+  <div id="music-panel">
+    <div class="mp-title">Música-tema <span class="mp-note">(corte full &middot; PH é mudo por convenção)</span></div>
+    <label class="mp-row"><input type="radio" name="mp" value="none" checked> Nenhuma</label>
+    <label class="mp-row"><input type="radio" name="mp" value="pulse"> Pulse (upbeat)</label>
+    <label class="mp-row"><input type="radio" name="mp" value="glass"> Glass (corporate)</label>
+    <label class="mp-row"><input type="radio" name="mp" value="drift"> Drift (lo-fi)</label>
+    <label class="mp-row"><input type="radio" name="mp" value="file"> Arquivo local&hellip; <input type="file" id="mp-file" accept="audio/*"></label>
+    <label class="mp-row"><input type="radio" name="mp" value="api" id="mp-api-radio"> Buscar (Openverse, CC)</label>
+    <div id="mp-api" style="display:none">
+      <div class="mp-search"><input id="mp-q" type="text" placeholder="ex.: upbeat electronic"><button id="mp-go">Buscar</button></div>
+      <div id="mp-list"></div>
+      <div class="mp-row" id="mp-credit-row" style="display:none"><span class="mp-note" id="mp-credit"></span><button id="mp-copy">copiar crédito</button></div>
+    </div>
+    <div class="mp-vol"><span class="mp-note">vol</span><input id="mp-vol" type="range" min="0" max="100" value="70"></div>
+    <div class="mp-note" id="mp-note"></div>
+    <div class="mp-row"><button id="mp-close">fechar</button></div>
+  </div>
+
+  <div id="gif-panel">
+    <div class="gp-title">GIF do take</div>
+    <div class="gp-row">largura <select id="gp-w"><option>480</option><option selected>640</option><option>800</option></select> fps <select id="gp-fps"><option>10</option><option selected>12</option><option>15</option></select></div>
+    <div class="gp-row">de <input id="gp-from" type="number" min="0" step="0.5" value="0"> s até <input id="gp-to" type="number" min="0" step="0.5"> s <span class="gp-dim">(vazio = fim)</span></div>
+    <div class="gp-row"><button id="gp-make">Gerar &amp; baixar</button><button id="gp-close">fechar</button></div>
+    <div id="gp-prog"><i></i></div>
+    <div class="mp-note" id="gp-out"></div>
   </div>
 
   <div id="fs-hint" role="alert">
@@ -422,6 +485,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     applyCaps(t);
     progFill.style.transform = 'scaleX(' + (t / CUT.dur) + ')';
     $('#c-time').textContent = t.toFixed(1) + ' / ' + CUT.dur.toFixed(1);
+    studioOnApply(t);
   }
 
   /* ---------- playback + contagem + gravação limpa ---------- */
@@ -429,7 +493,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     raf = null;
     if (lastTs != null && playing) {
       t += (ts - lastTs) / 1000;
-      if (t >= CUT.dur) t -= CUT.dur; /* loop */
+      if (t >= CUT.dur) { if (studioOnWrap()) t = CUT.dur - 0.001; else t -= CUT.dur; } /* loop */
     }
     lastTs = ts;
     apply(t);
@@ -444,20 +508,23 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     clearTimeout(hideTimer);
     suppressUntil = performance.now() + 1500;
     raf = requestAnimationFrame(frame);
+    studioOnPlay();
   }
   function pause() {
     playing = false;
     if (raf) cancelAnimationFrame(raf); raf = null;
     $('#c-play').innerHTML = '&#9654;';
     app.classList.remove('playing');
+    studioOnPause();
     if (started) pokeControls();
   }
-  function seek(nt) { t = Math.max(0, Math.min(CUT.dur - 0.001, nt)); apply(t); }
+  function seek(nt) { t = Math.max(0, Math.min(CUT.dur - 0.001, nt)); apply(t); studioOnSeek(t); }
 
-  var counting = false, cdTimer = null;
+  var counting = false, cdTimer = null, cdDone = null;
   function startCountdown(done) {
     cancelCountdown();
     counting = true;
+    cdDone = done;
     var k = 4;
     cdNum.textContent = k;
     cdEl.classList.add('on');
@@ -495,8 +562,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 
   document.addEventListener('keydown', function (e) {
     if (counting) {
-      if (e.key === ' ') { e.preventDefault(); finishCountdown(play); }
-      else if (e.key === 'Escape') { cancelCountdown(); pokeControls(); }
+      if (e.key === ' ') { e.preventDefault(); finishCountdown(cdDone || play); }
+      else if (e.key === 'Escape') { cancelCountdown(); studioOnCountdownCancel(); pokeControls(); }
       else if (e.key === 'f' || e.key === 'F') toggleFs();
       return;
     }
@@ -538,6 +605,60 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     if (!q.get('paused')) play();
   }
 
+  /* ============================================================
+     STUDIO (mobília pronta — normalmente não mexer)
+     Take one-click → MP4/WebM, música-tema mixada, GIF do take.
+     Integração com o engine: só pelos hooks studioOn*.
+     ============================================================ */
+  var STUDIO_ENV = {
+    iframe: (function () { try { return window.top !== window; } catch (e) { return true; } })(),
+    gdm: !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)
+  };
+  function canRec() { return !STUDIO_ENV.iframe && STUDIO_ENV.gdm; }
+
+  var recState = {
+    state: 'idle',            /* idle | arming | recording | processing */
+    stream: null, recorder: null, chunks: [], mime: '', endKind: '',
+    lastTake: null,           /* {blob, mime, dur, cut, audioTracks, partial} */
+    autoDownload: true
+  };
+
+  /* Hooks chamados pelo engine (corpos preenchidos nas seções seguintes). */
+  function studioOnPlay() {}
+  function studioOnPause() {}
+  function studioOnSeek(nt) {}
+  function studioOnApply(tt) {}
+  function studioOnWrap() { return false; }
+  function studioOnCountdownCancel() {}
+
   window.__film = { seek: seek, play: play, pause: pause, restart: restart, fs: toggleFs, setCut: function (n) { setCut(n); seek(0); }, get t() { return t; } };
+
+  /* ---------- STUDIO: UI + boot ---------- */
+  function updateStudioUi() {
+    var rec = canRec();
+    $('#st-rec').style.display = rec ? '' : 'none';
+    $('#st-cutsel').style.display = rec ? '' : 'none';
+    $('#c-rec').style.display = rec ? '' : 'none';
+    $('#st-nohint').style.display = rec ? 'none' : 'inline';
+    $('#st-cutsel').textContent = cutName.toUpperCase();
+  }
+  $('#st-cutsel').addEventListener('click', function () {
+    setCut(cutName === 'full' ? 'ph' : 'full');
+    updateStudioUi();
+  });
+  $('#tt-x').addEventListener('click', function () { $('#st-toast').classList.remove('on'); });
+  $('#mp-close').addEventListener('click', function () { $('#music-panel').classList.remove('on'); });
+  $('#gp-close').addEventListener('click', function () { $('#gif-panel').classList.remove('on'); });
+  $('#st-music').addEventListener('click', function () { $('#music-panel').classList.add('on'); });
+
+  var studioApi = {
+    get state() { return recState.state; },
+    get lastTake() { return recState.lastTake; },
+    get autoDownload() { return recState.autoDownload; },
+    set autoDownload(v) { recState.autoDownload = !!v; },
+    get env() { return { iframe: STUDIO_ENV.iframe, gdm: STUDIO_ENV.gdm, canRec: canRec() }; }
+  };
+  window.__film.studio = studioApi;
+  updateStudioUi();
 })();
 </script>
