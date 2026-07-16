@@ -34,7 +34,9 @@ test('take PH one-click: começa em t=0, para no fim, sem áudio, baixável', as
     return { size: t.blob.size, mime: t.mime, cut: t.cut, audio: t.audioTracks, partial: t.partial, dur: t.dur };
   });
   expect(tk.size).toBeGreaterThan(20000);
-  expect(tk.mime).toContain('webm'); /* chromium do playwright não tem h264/mp4 */
+  const expectedMime = await page.evaluate(() => window.__film.studio.pickMime((m) => MediaRecorder.isTypeSupported(m), false));
+  expect(expectedMime).not.toBe('');
+  expect(tk.mime).toBe(expectedMime); /* primeiro candidato suportado da cascata (mp4 no Chrome >=126; webm em builds sem h264) */
   expect(tk.cut).toBe('ph');
   expect(tk.audio).toBe(0);
   expect(tk.partial).toBe(false);
