@@ -1013,6 +1013,18 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     MUSIC.gainBase = $('#mp-vol').value / 100;
     if (musicGain) musicGain.gain.value = MUSIC.gainBase;
   });
+  $('#mp-file').addEventListener('change', function () {
+    var f = $('#mp-file').files[0];
+    if (!f) return;
+    f.arrayBuffer().then(function (ab) {
+      ensureCtx();
+      return actx.decodeAudioData(ab);
+    }).then(function (buf) {
+      setMusic({ type: 'file', buf: buf, label: f.name });
+    }).catch(function () {
+      $('#mp-note').textContent = 'não consegui decodificar esse arquivo de áudio.';
+    });
+  });
 
   var studioApi = {
     get state() { return recState.state; },
