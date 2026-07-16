@@ -39,3 +39,14 @@ test('painel de música seleciona synth pela UI', async ({ page }) => {
   await page.waitForFunction(() => window.__film.studio.music.sel.type === 'synth');
   await expect(page.locator('#st-music-name')).toHaveText('Glass (corporate)');
 });
+
+test('REC imediatamente após selecionar synth ainda grava com áudio (race)', async ({ page }) => {
+  await page.goto(PAGE);
+  await page.evaluate(() => { window.__film.studio.autoDownload = false; });
+  /* NÃO aguarda setMusic: dispara e chama rec no mesmo tick ('drift' não tem cache) */
+  await page.evaluate(() => { window.__film.studio.setMusic({ type: 'synth', id: 'drift' }); return window.__film.studio.rec('full'); });
+  await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 20000 });
+  await page.evaluate(() => window.__film.studio.stop());
+  await page.waitForFunction(() => window.__film.studio.state === 'idle' && !!window.__film.studio.lastTake, null, { timeout: 10000 });
+  expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
+});

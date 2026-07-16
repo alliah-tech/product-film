@@ -666,9 +666,11 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 
   function wantsTabAudio() { return false; } /* Task 6 (rota element da API) muda isto */
   function prepMusic() {
-    if (!musicActive()) return Promise.resolve();
-    if (MUSIC.sel.type === 'synth' && !MUSIC.buf) return renderSynth(MUSIC.sel.id).then(function (b) { MUSIC.buf = b; });
-    return Promise.resolve();
+    var wait = MUSIC.pending || Promise.resolve();
+    return wait.then(function () {
+      if (!musicActive()) return;
+      if (MUSIC.sel.type === 'synth' && !MUSIC.buf) return renderSynth(MUSIC.sel.id).then(function (b) { MUSIC.buf = b; });
+    });
   }
   function mixerAudioTrack() {
     if (!musicActive() || MUSIC.route !== 'buffer' || !MUSIC.buf) return null;
@@ -770,15 +772,15 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     if (cut) setCut(cut);
     recState.state = 'arming';
     updateStudioUi();
-    return armCapture().then(function () {
+    return prepMusic().then(function () {
+      return armCapture();
+    }).then(function () {
       started = true;
       startOv.style.display = 'none';
       if (playing) pause();
       seek(0);
-      return prepMusic().then(function () {
-        startCountdown(function () { startRecorder(); play(); });
-        return true;
-      });
+      startCountdown(function () { startRecorder(); play(); });
+      return true;
     }).catch(function (e) {
       studioAbortArming();
       toastMsg('captura cancelada (' + ((e && e.name) || 'erro') + ')');
@@ -794,7 +796,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 
   /* ---------- STUDIO: música (mixer WebAudio) ---------- */
   var actx = null, musicGain = null, fadeGain = null, masterGain = null, recDest = null;
-  var MUSIC = { sel: { type: 'none', label: 'Nenhuma' }, route: 'buffer', buf: null, el: null, src: null, gainBase: 0.7, credit: '' };
+  var MUSIC = { sel: { type: 'none', label: 'Nenhuma' }, route: 'buffer', buf: null, el: null, src: null, gainBase: 0.7, credit: '', pending: null };
   var SYNTH_LABELS = { pulse: 'Pulse (upbeat)', glass: 'Glass (corporate)', drift: 'Drift (lo-fi)' };
 
   function ensureCtx() {
@@ -846,8 +848,10 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       MUSIC.sel = { type: 'file', label: sel.label || 'arquivo' };
       MUSIC.buf = sel.buf;
     } else if (sel.type === 'api') {
-      return pickApiTrack(sel.trk); /* Task 6 */
+      MUSIC.pending = pickApiTrack(sel.trk); /* Task 6 */
+      return MUSIC.pending;
     }
+    MUSIC.pending = done;
     updateStudioUi();
     if (playing) startMusicAt(t);
     return done;
