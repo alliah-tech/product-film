@@ -8,17 +8,30 @@ fiel que se navega sozinha (cursor cenográfico, legendas cinéticas, zoom/spotl
 ## Instalar
 
 Repositório **público** — qualquer pessoa da comunidade pode instalar, sem precisar de acesso
-especial. Dentro do Claude Code:
+especial. Dois jeitos:
+
+### A) Pela linha de comando (CLI / terminal)
 
 ```
 /plugin marketplace add alliah-tech/product-film
 /plugin install product-film@product-film-marketplace
 ```
 
-Recarregue os plugins (`/reload-plugins`) ou reinicie o Claude Code. Pronto — o skill fica
-disponível como **`/product-film`**.
+Recarregue os plugins (`/reload-plugins`) ou reinicie o Claude Code.
 
 > Alternativa por URL: `/plugin marketplace add https://github.com/alliah-tech/product-film.git`
+
+### B) Pela interface gráfica (extensão Claude Code no VS Code)
+
+1. Na barra de input, clique no botão **`/`** (ou digite `/`) → digite **`plugins`** → clique em
+   **Manage plugins**.
+2. Vá na aba **Marketplaces** → no campo *"GitHub repo, URL, or path"* cole
+   **`alliah-tech/product-film`** (ou a URL `https://github.com/alliah-tech/product-film`) →
+   clique **Add**. Ele aparece como **`product-film-marketplace`**.
+3. Vá na aba **Plugins** → na seção **AVAILABLE**, ache **`product-film`** → clique **Install**.
+
+Pronto pelos dois caminhos: o skill fica disponível como **`/product-film`** — é só digitar no
+chat (aparece em *Slash Commands*).
 
 ## Usar
 
