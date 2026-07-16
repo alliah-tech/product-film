@@ -5,10 +5,10 @@ Marketplace de um plugin só: **`product-film`**, um skill do Claude Code que co
 fiel que se navega sozinha (cursor cenográfico, legendas cinéticas, zoom/spotlight, contagem
 4·3·2·1, loop). Você só **grava a tela**.
 
-## Instalar (para colegas)
+## Instalar
 
-O repo é privado — você precisa ter **acesso de leitura** e estar **autenticado no git**
-(SSH com chave, ou `gh auth login` para HTTPS). Então, dentro do Claude Code:
+Repositório **público** — qualquer pessoa da comunidade pode instalar, sem precisar de acesso
+especial. Dentro do Claude Code:
 
 ```
 /plugin marketplace add alliah-tech/product-film
