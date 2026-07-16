@@ -1024,6 +1024,145 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     return Promise.resolve();
   }
 
+  /* ---------- STUDIO: GIF (encoder próprio: paleta uniforme + dither + LZW) ---------- */
+  var GIF_PAL = (function () {
+    var p = [];
+    for (var r = 0; r < 6; r++) for (var g = 0; g < 7; g++) for (var b = 0; b < 6; b++)
+      p.push([Math.round(r * 51), Math.round(g * 42.5), Math.round(b * 51)]);
+    while (p.length < 256) p.push([0, 0, 0]);
+    return p;
+  })();
+  function palIdx(r, g, b) {
+    var ri = Math.round(r / 51), gi = Math.round(g / 42.5), bi = Math.round(b / 51);
+    if (ri > 5) ri = 5; if (gi > 6) gi = 6; if (bi > 5) bi = 5;
+    return ri * 42 + gi * 6 + bi;
+  }
+  function ditherFrame(rgba, w, h) {
+    var d = new Float32Array(rgba.length);
+    d.set(rgba);
+    var out = new Uint8Array(w * h);
+    function spread(x, y, er, eg, eb, f) {
+      if (x < 0 || x >= w || y >= h) return;
+      var j = (y * w + x) * 4;
+      d[j] += er * f; d[j + 1] += eg * f; d[j + 2] += eb * f;
+    }
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+      var i = (y * w + x) * 4;
+      var r = d[i] < 0 ? 0 : d[i] > 255 ? 255 : d[i];
+      var g = d[i + 1] < 0 ? 0 : d[i + 1] > 255 ? 255 : d[i + 1];
+      var b = d[i + 2] < 0 ? 0 : d[i + 2] > 255 ? 255 : d[i + 2];
+      var idx = palIdx(r, g, b), c = GIF_PAL[idx];
+      out[y * w + x] = idx;
+      var er = r - c[0], eg = g - c[1], eb = b - c[2];
+      spread(x + 1, y, er, eg, eb, 7 / 16);
+      spread(x - 1, y + 1, er, eg, eb, 3 / 16);
+      spread(x, y + 1, er, eg, eb, 5 / 16);
+      spread(x + 1, y + 1, er, eg, eb, 1 / 16);
+    }
+    return out;
+  }
+  /* LZW do GIF (ordem canônica do omggif: emite, clear em 4096, senão bump+insere) */
+  function lzwEncode(pixels, minCode) {
+    var CLEAR = 1 << minCode, EOI = CLEAR + 1, MAXMAX = 4096;
+    var codeSize = minCode + 1, next = EOI + 1, dict = {};
+    var bytes = [], acc = 0, accBits = 0;
+    function out(code) {
+      acc |= code << accBits; accBits += codeSize;
+      while (accBits >= 8) { bytes.push(acc & 255); acc >>= 8; accBits -= 8; }
+    }
+    function reset() { dict = {}; next = EOI + 1; codeSize = minCode + 1; }
+    out(CLEAR);
+    var prefix = pixels[0];
+    for (var i = 1; i < pixels.length; i++) {
+      var k = pixels[i], key = prefix * 256 + k;
+      if (dict[key] !== undefined) { prefix = dict[key]; continue; }
+      out(prefix);
+      if (next === MAXMAX) { out(CLEAR); reset(); }
+      else {
+        if (next >= (1 << codeSize)) codeSize++;
+        dict[key] = next++;
+      }
+      prefix = k;
+    }
+    out(prefix); out(EOI);
+    if (accBits > 0) bytes.push(acc & 255);
+    return bytes;
+  }
+  function encodeGif(frames, w, h, delayCs) {
+    var out = [];
+    function str(s) { for (var i = 0; i < s.length; i++) out.push(s.charCodeAt(i)); }
+    function u16(v) { out.push(v & 255, (v >> 8) & 255); }
+    str('GIF89a'); u16(w); u16(h);
+    out.push(0xF7, 0, 0); /* GCT 256 cores */
+    for (var i = 0; i < 256; i++) { var c = GIF_PAL[i]; out.push(c[0], c[1], c[2]); }
+    out.push(0x21, 0xFF, 0x0B); str('NETSCAPE2.0'); out.push(3, 1); u16(0); out.push(0); /* loop ∞ */
+    frames.forEach(function (px) {
+      out.push(0x21, 0xF9, 4, 0); u16(delayCs); out.push(0, 0); /* GCE: delay em centissegundos */
+      out.push(0x2C); u16(0); u16(0); u16(w); u16(h); out.push(0); /* descriptor sem LCT */
+      out.push(8); /* min LZW code size */
+      var data = lzwEncode(px, 8);
+      for (var p = 0; p < data.length; p += 255) {
+        var end = Math.min(p + 255, data.length);
+        out.push(end - p);
+        for (var q = p; q < end; q++) out.push(data[q]);
+      }
+      out.push(0);
+    });
+    out.push(0x3B);
+    return new Blob([new Uint8Array(out)], { type: 'image/gif' });
+  }
+  function gifProgress(p) {
+    $('#gp-prog').classList.add('on');
+    $('#gp-prog i').style.width = Math.round(p * 100) + '%';
+  }
+  function makeGif(opts) {
+    var tk = recState.lastTake;
+    if (!tk) return Promise.reject(new Error('sem take gravado'));
+    var width = opts.width || 640, fps = opts.fps || 12;
+    return new Promise(function (resolve, reject) {
+      var v = document.createElement('video');
+      v.muted = true; v.preload = 'auto';
+      v.src = URL.createObjectURL(tk.blob);
+      v.addEventListener('error', function () { reject(new Error('não consegui decodificar o take')); });
+      v.addEventListener('loadedmetadata', function () {
+        /* WebM do MediaRecorder pode vir com duration=Infinity: seek grande corrige */
+        var fix = isFinite(v.duration) ? Promise.resolve() : new Promise(function (res) {
+          v.currentTime = 1e9;
+          v.addEventListener('seeked', function on() { v.removeEventListener('seeked', on); res(); });
+        });
+        fix.then(function () {
+          var dur = (isFinite(v.duration) && v.duration > 0) ? v.duration : tk.dur;
+          var from = Math.max(0, opts.from || 0);
+          var to = Math.min(opts.to || dur, dur);
+          var w2 = Math.min(width, v.videoWidth || width);
+          var h2 = Math.max(2, Math.round(w2 * (v.videoHeight || 9) / (v.videoWidth || 16) / 2) * 2);
+          var cv = document.createElement('canvas'); cv.width = w2; cv.height = h2;
+          var cx = cv.getContext('2d', { willReadFrequently: true });
+          var frames = [], times = [];
+          for (var tt = from; tt < to; tt += 1 / fps) times.push(tt);
+          if (!times.length) { reject(new Error('janela vazia')); return; }
+          var i = 0;
+          (function step() {
+            if (i >= times.length) {
+              URL.revokeObjectURL(v.src);
+              resolve(encodeGif(frames, w2, h2, Math.round(100 / fps)));
+              return;
+            }
+            v.currentTime = times[i];
+            v.addEventListener('seeked', function on() {
+              v.removeEventListener('seeked', on);
+              cx.drawImage(v, 0, 0, w2, h2);
+              frames.push(ditherFrame(cx.getImageData(0, 0, w2, h2).data, w2, h2));
+              gifProgress((i + 1) / times.length);
+              i++;
+              setTimeout(step, 0);
+            });
+          })();
+        });
+      });
+    });
+  }
+
   window.__film = { seek: seek, play: play, pause: pause, restart: restart, fs: toggleFs, setCut: function (n) { setCut(n); seek(0); }, get t() { return t; } };
 
   /* ---------- STUDIO: UI + boot ---------- */
@@ -1113,6 +1252,39 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     $('#mp-api-radio').parentElement.title = 'indisponível no preview (rede bloqueada pelo CSP do artifact)';
   }
 
+  $('#tt-gif').addEventListener('click', function () {
+    if (!recState.lastTake) return;
+    $('#gp-to').placeholder = recState.lastTake.dur.toFixed(1);
+    $('#gp-out').textContent = '';
+    $('#gif-panel').classList.add('on');
+  });
+  $('#gp-make').addEventListener('click', function () {
+    var tk = recState.lastTake; if (!tk) return;
+    $('#gp-make').disabled = true;
+    $('#gp-out').textContent = 'gerando…';
+    var to = parseFloat($('#gp-to').value);
+    makeGif({
+      width: parseInt($('#gp-w').value, 10),
+      fps: parseInt($('#gp-fps').value, 10),
+      from: parseFloat($('#gp-from').value) || 0,
+      to: isNaN(to) ? undefined : to
+    }).then(function (blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = slugTitle() + '-' + tk.cut + '.gif';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      $('#gp-out').textContent = fmtMB(blob.size) + (blob.size > 3145728
+        ? ' — acima de 3 MB: para o GIF oficial, use ffmpeg/gifski sobre o MP4 (qualidade superior).'
+        : '');
+    }).catch(function (e) {
+      $('#gp-out').textContent = 'falhou: ' + e.message;
+    }).then(function () {
+      $('#gp-make').disabled = false;
+      $('#gp-prog').classList.remove('on');
+    });
+  });
+
   var studioApi = {
     get state() { return recState.state; },
     get lastTake() { return recState.lastTake; },
@@ -1127,6 +1299,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     renderSynth: renderSynth,
     openverseSearch: openverseSearch,
     pickApiTrack: pickApiTrack,
+    makeGif: makeGif,
+    encodeGif: encodeGif,
+    lzwEncode: lzwEncode,
     get music() { return { sel: MUSIC.sel, route: MUSIC.route, credit: MUSIC.credit }; }
   };
   window.__film.studio = studioApi;
