@@ -1,0 +1,543 @@
+<title>PRODUCT — Product Film</title>
+<!-- ============================================================
+  PRODUCT FILM — engine skeleton (auto-reproduzível, gravável)
+  Motor de referência para product films, testado em produção. Como usar:
+  1. Substitua o bloco de TOKENS pelos design tokens do produto.
+  2. Injete fontes woff2 como data URI nos placeholders __FONT*__
+     (baixe do Google Fonts com UA de browser; fontes VARIÁVEIS
+     cobrem vários pesos com 1 arquivo). CSP de artifact bloqueia CDN.
+  3. Construa as cenas (.scene) replicando o produto REAL (tokens +
+     componentes + valores de uma execução real — nunca invente UI).
+  4. Preencha as tabelas defFull()/defPh(): todo estado visual é
+     função pura de t (seekável: ?cut=full|ph&t=SEG&paused=1).
+  5. Verifique por seek com screenshots beat a beat antes de entregar.
+  ============================================================ -->
+<style>
+/* __FONT_INJECTION__: troque pelos @font-face com data URI, ex.:
+@font-face { font-family: 'Display'; font-weight: 300 700; font-display: block;
+  src: url(data:font/woff2;base64,__FONT_DISPLAY__) format('woff2'); } */
+
+:root {
+  color-scheme: dark;
+  /* ===== TOKENS DO PRODUTO (EDIT-ME: copie do design system real) ===== */
+  --color-bg: #0d0d1a;
+  --color-surface: #1a1a2e;
+  --color-surface-code: #0a0a18;
+  --color-text: #e8e8f0;
+  --color-text-muted: #7a7a9e;
+  --color-text-dim: #4a4a6e;
+  --color-border: #2a2a4a;
+  --color-border-hover: #3a3a5e;
+  --color-accent: #e94560;
+  --color-accent-glow: rgba(233, 69, 96, 0.25);
+  --font-display: 'Display', sans-serif;
+  --font-body: 'Body', sans-serif;
+  --font-mono: 'Mono', monospace;
+  --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+}
+
+html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; overflow: hidden; }
+* { box-sizing: border-box; }
+#app { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; }
+
+/* ---------- Stage 1920×1080 fixo, escalado para caber (letterbox) ---------- */
+#stage {
+  position: relative; width: 1920px; height: 1080px; flex: none;
+  background: var(--color-bg); overflow: hidden;
+  font-family: var(--font-body); color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+/* Camada de câmera — beats de zoom escalam isto */
+#film { position: absolute; inset: 0; transform-origin: 50% 50%; will-change: transform; }
+.scene { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+
+/* ===== CENAS DE EXEMPLO (EDIT-ME: substitua pelas réplicas do produto) ===== */
+#sc-one .page { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+#sc-one .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 48px 64px; font-family: var(--font-display); font-size: 40px; }
+#sc-one .card b { color: var(--color-accent); }
+#sc-one #btn-acao { margin-top: 24px; padding: 14px 28px; border: none; border-radius: var(--radius-md); background: var(--color-accent); color: #fff; font-size: 18px; display: block; transition: filter .15s; }
+#sc-one.btn-press #btn-acao { filter: brightness(.8); }
+
+#sc-end { background: var(--color-bg); z-index: 9; }
+.end-stack { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+.end-stack .wm { font-family: var(--font-display); font-weight: 700; font-size: 76px; letter-spacing: -0.02em; }
+.end-stack .wm b { color: var(--color-accent); }
+.end-stack .url { font-family: var(--font-mono); font-size: 26px; padding: 12px 28px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-full); }
+.end-stack > * { opacity: 0; transform: translateY(14px); transition: opacity .3s var(--ease-decelerate), transform .3s var(--ease-decelerate); }
+#sc-end.in .end-stack > :nth-child(1) { opacity: 1; transform: none; }
+#sc-end.in .end-stack > :nth-child(2) { opacity: 1; transform: none; transition-delay: .09s; }
+#sc-end.in .end-stack > :nth-child(3) { opacity: 1; transform: none; transition-delay: .18s; }
+
+/* ============ MOBÍLIA DE PALCO (pronta — normalmente não mexer) ============ */
+/* Legendas cinéticas (placa bottom-center, 1 linha, ≤5 palavras) */
+#captions { position: absolute; left: 0; right: 0; bottom: 96px; display: flex; justify-content: center; z-index: 50; pointer-events: none; }
+#cap-plate {
+  display: flex; align-items: center; gap: 14px; max-width: 1100px; padding: 14px 28px;
+  background: rgba(10,10,24,.88); border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  backdrop-filter: blur(8px); opacity: 0; transform: translateY(12px);
+}
+#cap-plate .pfx { font-family: var(--font-mono); font-weight: 700; font-size: 34px; color: var(--color-accent); }
+#cap-plate .ctx { font-family: var(--font-display); font-weight: 700; font-size: 40px; color: var(--color-text); white-space: nowrap; }
+#cap-plate .ctx em { font-style: normal; color: var(--color-accent); }
+
+/* Cursor falso (dot) + ripples de clique */
+#cursor { position: absolute; z-index: 60; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: rgba(232,232,240,.92); border: 1.5px solid rgba(13,13,26,.9); box-shadow: 0 2px 8px rgba(0,0,0,.45); opacity: 0; pointer-events: none; }
+#cursor.press { transform: scale(.82); }
+.ripple { position: absolute; z-index: 59; width: 20px; height: 20px; margin: -10px 0 0 -10px; border: 2px solid var(--color-accent); border-radius: 50%; pointer-events: none; }
+
+/* Spotlight (escurece tudo menos o alvo) */
+#dimring { position: absolute; z-index: 45; border-radius: var(--radius-lg); box-shadow: 0 0 0 9999px rgba(13,13,26,.55); opacity: 0; transition: opacity .26s var(--ease-default); pointer-events: none; }
+
+/* Barra de progresso do filme */
+#progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; z-index: 70; background: rgba(42,42,74,.4); }
+#progress i { display: block; height: 100%; width: 100%; background: var(--color-accent); transform-origin: left; transform: scaleX(0); }
+
+/* Contagem 4·3·2·1 antes do play (folga para a gravação) */
+#countdown { position: absolute; inset: 0; z-index: 110; background: var(--color-surface-code); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 18px; }
+#countdown.on { display: flex; }
+#countdown .num { font-family: var(--font-display); font-weight: 300; font-size: 240px; line-height: 1; color: var(--color-text); }
+#countdown .cd-sub { font-family: var(--font-mono); font-size: 14px; color: var(--color-text-dim); letter-spacing: .08em; }
+
+/* Start overlay (escolha de corte; nunca reaparece após o loop) */
+#start { position: absolute; inset: 0; z-index: 100; background: var(--color-surface-code); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 34px; }
+#start .s-inner { display: flex; flex-direction: column; align-items: center; gap: 30px; }
+#start .s-cuts { display: flex; gap: 18px; }
+.cutbtn { display: flex; flex-direction: column; gap: 8px; width: 340px; padding: 24px 26px; background: var(--color-surface); border: 1px solid var(--color-border-hover); border-radius: var(--radius-lg); cursor: pointer; text-align: left; color: var(--color-text); transition: border-color .2s; }
+.cutbtn:hover, .cutbtn:focus-visible { border-color: var(--color-accent); outline: none; }
+.cutbtn .cb-t { font-family: var(--font-display); font-weight: 700; font-size: 24px; }
+.cutbtn .cb-d { font-size: 14.5px; color: var(--color-text-muted); }
+#start .s-hints { display: flex; gap: 26px; font-family: var(--font-mono); font-size: 13.5px; color: var(--color-text-dim); }
+#start .s-hints b { color: var(--color-text-muted); font-weight: 400; border: 1px solid var(--color-border-hover); border-radius: 5px; padding: 2px 8px; margin-right: 6px; }
+
+/* Controles fora do frame (auto-ocultos; somem NA HORA do play) */
+#controls { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 200; display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(10,10,24,.92); border: 1px solid var(--color-border-hover); border-radius: var(--radius-full); font-family: var(--font-mono); font-size: 13px; color: var(--color-text-muted); opacity: 0; transition: opacity .25s; pointer-events: none; }
+#controls.show { opacity: 1; pointer-events: auto; }
+#controls button { background: transparent; border: none; color: var(--color-text); font-family: var(--font-mono); font-size: 13px; padding: 6px 12px; border-radius: var(--radius-full); cursor: pointer; }
+#controls button:hover { background: var(--color-surface); }
+#controls .time { padding: 0 8px; min-width: 96px; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* Cursor do SO some durante o play (o filme tem cursor cenográfico próprio) */
+#app.playing { cursor: none; }
+
+/* Aviso de fullscreen bloqueado (previews em iframe negam a API) */
+#fs-hint { position: fixed; top: 14px; right: 14px; z-index: 300; max-width: 420px; background: rgba(10,10,24,.96); border: 1px solid var(--color-border-hover); border-radius: 10px; padding: 14px 16px; font-family: var(--font-body); font-size: 13.5px; color: var(--color-text-muted); line-height: 1.55; display: none; }
+#fs-hint.on { display: block; }
+#fs-hint b { color: var(--color-text); }
+#fs-hint .row { display: flex; gap: 8px; margin-top: 10px; }
+#fs-hint button { border: 1px solid var(--color-border-hover); background: transparent; color: var(--color-text); border-radius: var(--radius-full); padding: 6px 13px; font-size: 12.5px; cursor: pointer; }
+</style>
+
+<div id="app">
+  <div id="stage">
+    <div id="film">
+      <!-- ===== CENAS (EDIT-ME) ===== -->
+      <section class="scene" id="sc-one">
+        <div class="page">
+          <div>
+            <div class="card">Replique o <b>produto real</b> aqui</div>
+            <button id="btn-acao">Ação primária</button>
+          </div>
+        </div>
+      </section>
+      <section class="scene" id="sc-end">
+        <div class="end-stack">
+          <div class="wm">Product<b>Name</b></div>
+          <div class="url">produto.dev</div>
+          <div style="font-family:var(--font-mono);color:var(--color-text-muted)">FREE — TRY IT</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== MOBÍLIA (pronta) ===== -->
+    <div id="dimring"></div>
+    <div id="captions"><div id="cap-plate"><span class="pfx">&gt;</span><span class="ctx" id="cap-text"></span></div></div>
+    <div id="cursor"></div>
+    <div id="progress"><i id="prog-fill"></i></div>
+    <div id="countdown"><div class="num">4</div><div class="cd-sub">SPACE skips &middot; ESC cancels</div></div>
+
+    <div id="start">
+      <div class="s-inner">
+        <div style="font-family:var(--font-display);font-weight:700;font-size:56px">Product<span style="color:var(--color-accent)">Name</span></div>
+        <div class="s-cuts">
+          <button class="cutbtn" data-cut="full"><span class="cb-t">Full cut &#9656;</span><span class="cb-d">Corte completo para YouTube/landing.</span></button>
+          <button class="cutbtn" data-cut="ph"><span class="cb-t">Short loop &#9656;</span><span class="cb-d">Loop mudo ~20s para Product Hunt.</span></button>
+        </div>
+        <div class="s-hints"><span><b>F</b>fullscreen</span><span><b>Space</b>play/pause</span><span><b>R</b>restart</span><span><b>&larr;&nbsp;&rarr;</b>&plusmn;2s</span><span><b>Esc</b>pause</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button id="c-play">&#9654;</button>
+    <button id="c-restart">&#8634;</button>
+    <span class="time" id="c-time">0.0 / 0.0</span>
+    <button id="c-cut">Cut: FULL</button>
+    <button id="c-full">&#x26F6;</button>
+  </div>
+
+  <div id="fs-hint" role="alert">
+    <b>Fullscreen bloqueado aqui.</b> Previews embutidos (iframe) negam a API. Abra numa aba própria, abra o arquivo local no browser, ou grave a região do palco com OBS.
+    <div class="row"><button id="fs-open">Abrir standalone &nearr;</button><button id="fs-dismiss">Fechar</button></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+
+  /* ---------- easing (curvas iguais às do produto) ---------- */
+  function cubicBezier(x1, y1, x2, y2) {
+    return function (t) {
+      if (t <= 0) return 0; if (t >= 1) return 1;
+      var lo = 0, hi = 1, mid, x;
+      for (var i = 0; i < 24; i++) {
+        mid = (lo + hi) / 2;
+        x = 3 * mid * (1 - mid) * (1 - mid) * x1 + 3 * mid * mid * (1 - mid) * x2 + mid * mid * mid;
+        if (x < t) lo = mid; else hi = mid;
+      }
+      var u = (lo + hi) / 2;
+      return 3 * u * (1 - u) * (1 - u) * y1 + 3 * u * u * (1 - u) * y2 + u * u * u;
+    };
+  }
+  var easeDefault = cubicBezier(0.4, 0, 0.2, 1);
+  var easeDecel = cubicBezier(0, 0, 0.2, 1);
+  var easeCursor = cubicBezier(0.4, 0.05, 0.15, 1); /* perfil humano (Fitts) */
+  function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function win(t, a, b) { return clamp01((t - a) / (b - a)); }
+  function lerp(a, b, p) { return a + (b - a) * p; }
+
+  /* ---------- refs ---------- */
+  var app = $('#app'), stage = $('#stage'), film = $('#film');
+  var scOne = $('#sc-one'), scEnd = $('#sc-end');
+  var cursor = $('#cursor'), dimring = $('#dimring');
+  var capPlate = $('#cap-plate'), capText = $('#cap-text'), progFill = $('#prog-fill');
+  var startOv = $('#start'), controls = $('#controls');
+  var cdEl = $('#countdown'), cdNum = $('#countdown .num'), fsHint = $('#fs-hint');
+
+  /* ---------- fit do palco (letterbox) ---------- */
+  function fit() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    stage.style.transform = 'scale(' + s + ')';
+    stage.style.transformOrigin = 'center center';
+  }
+  window.addEventListener('resize', fit); fit();
+
+  /* Posição em coordenadas do palco (funciona com câmera com zoom).
+     ATENÇÃO: elemento com display:none tem rect (0,0) — para alvos que
+     trocam de display no meio do gesto, ancore por coordenadas fixas. */
+  function stagePos(sel, fx, fy) {
+    var el = typeof sel === 'string' ? $(sel) : sel;
+    if (!el) return { x: 960, y: 540 };
+    var r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    var k = sr.width / 1920;
+    return {
+      x: (r.left - sr.left + r.width * (fx == null ? 0.5 : fx)) / k,
+      y: (r.top - sr.top + r.height * (fy == null ? 0.5 : fy)) / k
+    };
+  }
+
+  /* ============================================================
+     TABELAS DOS CORTES (EDIT-ME) — todo estado visual = f(t).
+     Tracks disponíveis:
+       scenes:       [{el, w:[in,out]}]           crossfade automático
+       caps:         [[in, out, 'html <em>kw</em>']]
+       classW:       [[el, 'classe', in, out]]    estados CSS por janela
+       cursor:       {showW, way:[{t, sel|x/y, fx, fy, click?}]}
+       camera:       [{w, scale:[a,b], sel}]      zoom com origem no alvo
+       dims:         [{w, sel, pad}]              spotlight
+       scrollTracks: [{el, list:[{w, from?, to?|toSel+off|rel}]}]
+       url/chrome/ghost/textura: estenda estas tabelas conforme o produto exigir.
+     ============================================================ */
+  function defFull() {
+    return {
+      dur: 10.0,
+      caps: [
+        [0.8, 3.0, 'Legenda curta com <em>keyword</em>'],
+        [4.2, 6.5, 'One click']
+      ],
+      scenes: [
+        { el: scOne, w: [0, 8.2] },
+        { el: scEnd, w: [7.9, 10.0] }
+      ],
+      classW: [
+        [scOne, 'btn-press', 5.02, 5.25],
+        [scEnd, 'in', 8.05, 99]
+      ],
+      camera: [
+        { w: [3.2, 4.0], scale: [1, 1.04], sel: '.card' },
+        { w: [4.0, 6.6], scale: [1.04, 1.04], sel: '.card' },
+        { w: [6.6, 7.4], scale: [1.04, 1], sel: '.card' }
+      ],
+      dims: [{ w: [3.4, 6.4], sel: '.card', pad: 6 }],
+      cursor: {
+        showW: [1.2, 7.6],
+        way: [
+          { t: 1.2, x: 1400, y: 760 },
+          { t: 2.4, sel: '.card', fx: 0.8, fy: 0.6 },
+          { t: 4.6, sel: '#btn-acao', fx: 0.5, fy: 0.5 },
+          { t: 5.1, sel: '#btn-acao', fx: 0.5, fy: 0.5, click: 5.1 },
+          { t: 6.2, x: 1400, y: 760 }
+        ]
+      },
+      scrollTracks: []
+    };
+  }
+  function defPh() {
+    var d = defFull();
+    d.dur = 8.0; /* EDIT-ME: corte curto próprio (PH pede ~20s, mudo, loop) */
+    return d;
+  }
+
+  /* ---------- engine (pronto — normalmente não mexer) ---------- */
+  var CUT = null, cutName = 'full';
+  var t = 0, playing = false, raf = null, lastTs = null, started = false;
+
+  function setCut(name) {
+    cutName = name;
+    CUT = name === 'ph' ? defPh() : defFull();
+    $('#c-cut').textContent = 'Cut: ' + name.toUpperCase();
+  }
+
+  var FADE = 0.28;
+  function sceneOpacity(t, w) {
+    if (t < w[0] || t > w[1]) return 0;
+    return Math.min(win(t, w[0], w[0] + FADE), 1 - win(t, w[1] - FADE, w[1]));
+  }
+  function applyScenes(t) {
+    CUT.scenes.forEach(function (s) { s.el.style.opacity = sceneOpacity(t, s.w); });
+  }
+  function applyClasses(t) {
+    CUT.classW.forEach(function (cw) { cw[0].classList.toggle(cw[1], t >= cw[2] && t < cw[3]); });
+  }
+  function applyCaps(t) {
+    var active = null;
+    for (var i = 0; i < CUT.caps.length; i++) {
+      if (t >= CUT.caps[i][0] && t < CUT.caps[i][1]) { active = CUT.caps[i]; break; }
+    }
+    if (!active) { capPlate.style.opacity = 0; return; }
+    if (capText.innerHTML !== active[2]) capText.innerHTML = active[2];
+    var pin = easeDecel(win(t, active[0], active[0] + 0.22));
+    var pout = 1 - easeDefault(win(t, active[1] - 0.18, active[1]));
+    capPlate.style.opacity = Math.min(pin, pout);
+    capPlate.style.transform = 'translateY(' + (pout < 1 ? lerp(0, -8, 1 - pout) : lerp(12, 0, pin)) + 'px)';
+  }
+  function applyCamera(t) {
+    var scale = 1, origin = '50% 50%';
+    for (var i = 0; i < CUT.camera.length; i++) {
+      var c = CUT.camera[i];
+      if (t >= c.w[0] && t <= c.w[1]) {
+        scale = lerp(c.scale[0], c.scale[1], easeDecel(win(t, c.w[0], c.w[1])));
+        var el = $(c.sel);
+        if (el) {
+          var r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+          var k = sr.width / 1920;
+          var m = film.style.transform ? parseFloat((film.style.transform.match(/scale\(([\d.]+)\)/) || [0, 1])[1]) : 1;
+          var oc = (film.style.transformOrigin || '960px 540px').split(' ').map(parseFloat);
+          var sx = (r.left - sr.left + r.width / 2) / k, sy = (r.top - sr.top + r.height / 2) / k;
+          origin = ((sx - oc[0]) / m + oc[0]) + 'px ' + ((sy - oc[1]) / m + oc[1]) + 'px';
+        }
+        break;
+      }
+    }
+    film.style.transformOrigin = origin;
+    film.style.transform = scale === 1 ? '' : 'scale(' + scale + ')';
+  }
+  function applyDim(t) {
+    var d = null;
+    for (var i = 0; i < CUT.dims.length; i++) {
+      if (t >= CUT.dims[i].w[0] && t <= CUT.dims[i].w[1] + 0.25) { d = CUT.dims[i]; break; }
+    }
+    if (!d) { dimring.style.opacity = 0; return; }
+    var el = $(d.sel);
+    if (!el) { dimring.style.opacity = 0; return; }
+    var r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    var k = sr.width / 1920, pad = d.pad || 0;
+    dimring.style.left = ((r.left - sr.left) / k - pad) + 'px';
+    dimring.style.top = ((r.top - sr.top) / k - pad) + 'px';
+    dimring.style.width = (r.width / k + pad * 2) + 'px';
+    dimring.style.height = (r.height / k + pad * 2) + 'px';
+    dimring.style.opacity = (t <= d.w[1]) ? 1 : (1 - win(t, d.w[1], d.w[1] + 0.25));
+  }
+  /* Um browser real para no fim do documento — clamp obrigatório. */
+  function applyScroll(t) {
+    CUT.scrollTracks.forEach(function (tr) {
+      var y = 0, base = 0;
+      for (var i = 0; i < tr.list.length; i++) {
+        var s = tr.list[i];
+        var from = (s.from != null) ? s.from : base;
+        var to = (s.rel != null) ? from + s.rel : (s.toSel ? (($(s.toSel) || {}).offsetTop || 0) + (s.off || 0) : s.to);
+        if (t < s.w[0]) { y = from; break; }
+        if (t <= s.w[1]) { y = lerp(from, to, easeDefault(win(t, s.w[0], s.w[1]))); base = to; break; }
+        y = to; base = to;
+      }
+      var viewport = tr.el.parentElement ? tr.el.parentElement.offsetHeight : 1028;
+      var maxY = Math.max(0, tr.el.offsetHeight - viewport);
+      tr.el.style.transform = 'translateY(' + (-Math.min(y, maxY)) + 'px)';
+    });
+  }
+  var ripLayer = document.createElement('div');
+  ripLayer.style.cssText = 'position:absolute;inset:0;z-index:58;pointer-events:none;';
+  stage.appendChild(ripLayer);
+  function wayPos(w) { return w.sel ? stagePos(w.sel, w.fx, w.fy) : { x: w.x, y: w.y }; }
+  function applyCursor(t) {
+    var cw = CUT.cursor;
+    var vis = t >= cw.showW[0] && t <= cw.showW[1];
+    cursor.style.opacity = vis ? 1 : 0;
+    if (!vis) { ripLayer.innerHTML = ''; return; }
+    var ws = cw.way, a = ws[0], b = ws[ws.length - 1];
+    for (var i = 0; i < ws.length - 1; i++) {
+      if (t >= ws[i].t && t <= ws[i + 1].t) { a = ws[i]; b = ws[i + 1]; break; }
+      if (t > ws[i + 1].t) { a = ws[i + 1]; b = ws[i + 1]; }
+    }
+    var pa = wayPos(a), pb = wayPos(b);
+    var p = (b.t === a.t) ? 1 : easeCursor(win(t, a.t, b.t));
+    var x = lerp(pa.x, pb.x, p), y = lerp(pa.y, pb.y, p);
+    var dist = Math.hypot(pb.x - pa.x, pb.y - pa.y);
+    if (dist > 60) y -= Math.sin(p * Math.PI) * Math.min(26, dist * 0.05); /* arco humano */
+    cursor.style.left = x + 'px'; cursor.style.top = y + 'px';
+    var pressed = false, frag = '';
+    ws.forEach(function (w) {
+      if (w.click == null) return;
+      if (t >= w.click - 0.02 && t <= w.click + 0.16) pressed = true;
+      var rp = (t - w.click) / 0.34;
+      if (rp > 0 && rp < 1) {
+        var pos = wayPos(w);
+        frag += '<span class="ripple" style="left:' + pos.x + 'px;top:' + pos.y + 'px;transform:scale(' + lerp(1, 2.5, easeDecel(rp)) + ');opacity:' + (0.8 * (1 - rp)) + '"></span>';
+      }
+    });
+    cursor.classList.toggle('press', pressed);
+    ripLayer.innerHTML = frag;
+  }
+
+  function apply(t) {
+    applyScenes(t);
+    applyClasses(t);
+    applyScroll(t);
+    applyCamera(t);
+    applyDim(t);
+    applyCursor(t);
+    applyCaps(t);
+    progFill.style.transform = 'scaleX(' + (t / CUT.dur) + ')';
+    $('#c-time').textContent = t.toFixed(1) + ' / ' + CUT.dur.toFixed(1);
+  }
+
+  /* ---------- playback + contagem + gravação limpa ---------- */
+  function frame(ts) {
+    raf = null;
+    if (lastTs != null && playing) {
+      t += (ts - lastTs) / 1000;
+      if (t >= CUT.dur) t -= CUT.dur; /* loop */
+    }
+    lastTs = ts;
+    apply(t);
+    if (playing) raf = requestAnimationFrame(frame);
+  }
+  function play() {
+    if (playing) return;
+    playing = true; lastTs = null;
+    $('#c-play').innerHTML = '&#10074;&#10074;';
+    app.classList.add('playing');            /* cursor do SO some */
+    controls.classList.remove('show');       /* controles somem NA HORA */
+    clearTimeout(hideTimer);
+    suppressUntil = performance.now() + 1500;
+    raf = requestAnimationFrame(frame);
+  }
+  function pause() {
+    playing = false;
+    if (raf) cancelAnimationFrame(raf); raf = null;
+    $('#c-play').innerHTML = '&#9654;';
+    app.classList.remove('playing');
+    if (started) pokeControls();
+  }
+  function seek(nt) { t = Math.max(0, Math.min(CUT.dur - 0.001, nt)); apply(t); }
+
+  var counting = false, cdTimer = null;
+  function startCountdown(done) {
+    cancelCountdown();
+    counting = true;
+    var k = 4;
+    cdNum.textContent = k;
+    cdEl.classList.add('on');
+    controls.classList.remove('show');
+    cdTimer = setInterval(function () {
+      k--;
+      if (k <= 0) { finishCountdown(done); return; }
+      cdNum.textContent = k;
+    }, 1000);
+  }
+  function finishCountdown(done) { clearInterval(cdTimer); counting = false; cdEl.classList.remove('on'); done && done(); }
+  function cancelCountdown() { if (!counting) return; clearInterval(cdTimer); counting = false; cdEl.classList.remove('on'); }
+
+  function begin(name) { setCut(name); started = true; startOv.style.display = 'none'; t = 0; apply(0); startCountdown(play); }
+  function restart() { pause(); seek(0); startCountdown(play); }
+
+  document.querySelectorAll('.cutbtn').forEach(function (b) {
+    b.addEventListener('click', function () { begin(b.getAttribute('data-cut')); });
+  });
+  $('#c-play').addEventListener('click', function () { playing ? pause() : play(); });
+  $('#c-restart').addEventListener('click', restart);
+  $('#c-cut').addEventListener('click', function () { pause(); setCut(cutName === 'full' ? 'ph' : 'full'); seek(0); startCountdown(play); });
+  $('#c-full').addEventListener('click', function () { toggleFs(); });
+
+  /* Fullscreen: previews em iframe (artifacts etc.) NEGAM a API — detectar e oferecer saídas. */
+  function toggleFs() {
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    var req = null;
+    try { req = document.documentElement.requestFullscreen ? document.documentElement.requestFullscreen() : null; } catch (e) { req = null; }
+    if (req && req.catch) req.catch(function () { fsHint.classList.add('on'); });
+    setTimeout(function () { if (!document.fullscreenElement) fsHint.classList.add('on'); }, 400);
+  }
+  $('#fs-open').addEventListener('click', function () { window.open(location.href, '_blank'); });
+  $('#fs-dismiss').addEventListener('click', function () { fsHint.classList.remove('on'); });
+
+  document.addEventListener('keydown', function (e) {
+    if (counting) {
+      if (e.key === ' ') { e.preventDefault(); finishCountdown(play); }
+      else if (e.key === 'Escape') { cancelCountdown(); pokeControls(); }
+      else if (e.key === 'f' || e.key === 'F') toggleFs();
+      return;
+    }
+    if (e.key === ' ' || e.key === 'k') { e.preventDefault(); if (!started) begin('full'); else playing ? pause() : play(); }
+    else if (e.key === 'r' || e.key === 'R') { if (started) restart(); }
+    else if (e.key === 'ArrowRight') seek(t + 2);
+    else if (e.key === 'ArrowLeft') seek(t - 2);
+    else if (e.key === 'f' || e.key === 'F') toggleFs();
+    else if (e.key === 'Escape') { if (playing) pause(); }
+  });
+
+  /* Durante o play, só mouse na BORDA INFERIOR revela os controles (take limpo). */
+  var hideTimer = null, suppressUntil = 0;
+  function pokeControls() {
+    if (!started || counting) return;
+    controls.classList.add('show');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(function () { controls.classList.remove('show'); }, 2200);
+  }
+  window.addEventListener('mousemove', function (e) {
+    if (!started || counting) return;
+    if (performance.now() < suppressUntil) return;
+    if (playing && e.clientY < window.innerHeight - 72) return;
+    pokeControls();
+  });
+
+  /* ---------- boot ---------- */
+  setCut('full');
+  apply(0);
+
+  /* ?cut=full|ph&t=SEG&paused=1 → testar beats por screenshot (headless
+     estrangula rAF: verifique por SEEK, não assistindo playback). */
+  var q = new URLSearchParams(location.search);
+  if (q.get('cut') || q.get('t') != null) {
+    setCut(q.get('cut') === 'ph' ? 'ph' : 'full');
+    started = true;
+    startOv.style.display = 'none';
+    seek(parseFloat(q.get('t') || '0') || 0);
+    if (!q.get('paused')) play();
+  }
+
+  window.__film = { seek: seek, play: play, pause: pause, restart: restart, fs: toggleFs, setCut: function (n) { setCut(n); seek(0); }, get t() { return t; } };
+})();
+</script>
