@@ -624,12 +624,17 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   };
 
   /* Hooks chamados pelo engine (corpos preenchidos nas seções seguintes). */
-  function studioOnPlay() {}
+  function studioOnPlay() { startMusicAt(t); }
   function studioOnPause() {
     if (recState.state === 'recording') { stopTake('partial'); return; }
+    stopMusic();
   }
-  function studioOnSeek(nt) {}
-  function studioOnApply(tt) {}
+  function studioOnSeek(nt) { if (playing) startMusicAt(nt); }
+  function studioOnApply(tt) {
+    if (!fadeGain || !CUT) return;
+    /* fade-in 0.5s e fade-out 1.5s do corte full, como função de t */
+    fadeGain.gain.value = (cutName === 'full') ? Math.min(win(tt, 0, 0.5), 1 - win(tt, CUT.dur - 1.5, CUT.dur)) : 1;
+  }
   function studioOnWrap() {
     if (recState.state !== 'recording') return false;
     stopTake('end');
@@ -660,8 +665,16 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   function fmtMB(n) { return (n / 1048576).toFixed(2) + ' MB'; }
 
   function wantsTabAudio() { return false; } /* Task 6 (rota element da API) muda isto */
-  function prepMusic() { return Promise.resolve(); } /* Task 4 substitui */
-  function mixerAudioTrack() { return null; } /* Task 4 substitui */
+  function prepMusic() {
+    if (!musicActive()) return Promise.resolve();
+    if (MUSIC.sel.type === 'synth' && !MUSIC.buf) return renderSynth(MUSIC.sel.id).then(function (b) { MUSIC.buf = b; });
+    return Promise.resolve();
+  }
+  function mixerAudioTrack() {
+    if (!musicActive() || MUSIC.route !== 'buffer' || !MUSIC.buf) return null;
+    ensureCtx();
+    return recDest.stream.getAudioTracks()[0];
+  }
 
   function armCapture() {
     var opts = {
@@ -712,6 +725,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     recState.state = 'processing';
     recState.endKind = kind;
     try { recState.recorder.stop(); } catch (e) {}
+    stopMusic();
     if (playing) pause();
   }
 
@@ -778,6 +792,175 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     updateStudioUi();
   }
 
+  /* ---------- STUDIO: música (mixer WebAudio) ---------- */
+  var actx = null, musicGain = null, fadeGain = null, masterGain = null, recDest = null;
+  var MUSIC = { sel: { type: 'none', label: 'Nenhuma' }, route: 'buffer', buf: null, el: null, src: null, gainBase: 0.7, credit: '' };
+  var SYNTH_LABELS = { pulse: 'Pulse (upbeat)', glass: 'Glass (corporate)', drift: 'Drift (lo-fi)' };
+
+  function ensureCtx() {
+    if (actx) return;
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    musicGain = actx.createGain(); musicGain.gain.value = MUSIC.gainBase;
+    fadeGain = actx.createGain();
+    masterGain = actx.createGain();
+    recDest = actx.createMediaStreamDestination();
+    musicGain.connect(fadeGain); fadeGain.connect(masterGain);
+    masterGain.connect(actx.destination); masterGain.connect(recDest);
+  }
+  function musicActive() { return cutName === 'full' && MUSIC.sel.type !== 'none'; }
+
+  function startMusicAt(offset) {
+    stopMusic();
+    if (!musicActive()) return;
+    if (MUSIC.route === 'element') {
+      if (MUSIC.el) {
+        try { MUSIC.el.currentTime = offset % (MUSIC.el.duration || 1e9); } catch (e) {}
+        MUSIC.el.play();
+      }
+      return;
+    }
+    if (!MUSIC.buf) return;
+    ensureCtx();
+    if (actx.state === 'suspended') actx.resume();
+    var src = actx.createBufferSource();
+    src.buffer = MUSIC.buf; src.loop = true;
+    src.connect(musicGain);
+    src.start(0, offset % MUSIC.buf.duration);
+    MUSIC.src = src;
+  }
+  function stopMusic() {
+    if (MUSIC.src) { try { MUSIC.src.stop(); } catch (e) {} MUSIC.src = null; }
+    if (MUSIC.el) MUSIC.el.pause();
+  }
+
+  function setMusic(sel) {
+    stopMusic();
+    MUSIC.credit = ''; MUSIC.el = null; MUSIC.buf = null; MUSIC.route = 'buffer';
+    var done = Promise.resolve();
+    if (!sel || sel.type === 'none') {
+      MUSIC.sel = { type: 'none', label: 'Nenhuma' };
+    } else if (sel.type === 'synth') {
+      MUSIC.sel = { type: 'synth', id: sel.id, label: SYNTH_LABELS[sel.id] || sel.id };
+      done = renderSynth(sel.id).then(function (b) { MUSIC.buf = b; });
+    } else if (sel.type === 'file') {
+      MUSIC.sel = { type: 'file', label: sel.label || 'arquivo' };
+      MUSIC.buf = sel.buf;
+    } else if (sel.type === 'api') {
+      return pickApiTrack(sel.trk); /* Task 6 */
+    }
+    updateStudioUi();
+    if (playing) startMusicAt(t);
+    return done;
+  }
+
+  /* ---------- STUDIO: synths (render offline → buffer; determinístico) ---------- */
+  var synthCache = {};
+  var SYNTHS = {
+    pulse: { bpm: 120, bars: 8, build: buildPulse },
+    glass: { bpm: 96, bars: 8, build: buildGlass },
+    drift: { bpm: 82, bars: 8, build: buildDrift }
+  };
+  function renderSynth(id) {
+    if (synthCache[id]) return Promise.resolve(synthCache[id]);
+    var def = SYNTHS[id];
+    if (!def) return Promise.reject(new Error('synth desconhecido: ' + id));
+    var dur = def.bars * 4 * 60 / def.bpm;
+    var oc = new OfflineAudioContext(2, Math.ceil(44100 * dur), 44100);
+    def.build(oc, def);
+    return oc.startRendering().then(function (buf) { synthCache[id] = buf; return buf; });
+  }
+  function n2f(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+  function adsr(oc, t0, dur, a, r, peak) {
+    var g = oc.createGain();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(peak, t0 + a);
+    g.gain.setValueAtTime(peak, Math.max(t0 + a, t0 + dur - r));
+    g.gain.linearRampToValueAtTime(0, t0 + dur);
+    return g;
+  }
+  function tone(oc, dest, type, midi, t0, dur, peak, a, r, detune) {
+    var o = oc.createOscillator();
+    o.type = type; o.frequency.value = n2f(midi);
+    if (detune) o.detune.value = detune;
+    var g = adsr(oc, t0, dur, a || 0.01, r || 0.08, peak);
+    o.connect(g); g.connect(dest);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+  function noiseBuf(oc) {
+    var b = oc.createBuffer(1, oc.sampleRate, oc.sampleRate), d = b.getChannelData(0);
+    var seed = 1;
+    for (var i = 0; i < d.length; i++) { seed = (seed * 16807) % 2147483647; d[i] = (seed / 2147483647) * 2 - 1; }
+    return b;
+  }
+  function hit(oc, dest, nb, t0, dur, peak, hpHz) {
+    var s = oc.createBufferSource(); s.buffer = nb;
+    var f = oc.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hpHz;
+    var g = adsr(oc, t0, dur, 0.001, dur * 0.8, peak);
+    s.connect(f); f.connect(g); g.connect(dest);
+    s.start(t0, (t0 * 7.13) % 0.8, dur + 0.02);
+  }
+  function kick(oc, dest, t0, peak) {
+    var o = oc.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(150, t0);
+    o.frequency.exponentialRampToValueAtTime(45, t0 + 0.12);
+    var g = adsr(oc, t0, 0.32, 0.002, 0.22, peak);
+    o.connect(g); g.connect(dest);
+    o.start(t0); o.stop(t0 + 0.4);
+  }
+  function buildPulse(oc, def) {
+    var out = oc.createGain(); out.gain.value = 0.5;
+    var lp = oc.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000;
+    out.connect(lp); lp.connect(oc.destination);
+    var nb = noiseBuf(oc), spb = 60 / def.bpm;
+    var chords = [57, 53, 48, 55], third = { 57: 3, 53: 4, 48: 4, 55: 4 }; /* Am F C G */
+    for (var bar = 0; bar < def.bars; bar++) {
+      var root = chords[bar % 4], t0 = bar * 4 * spb;
+      for (var b = 0; b < 4; b++) {
+        var tb = t0 + b * spb;
+        kick(oc, out, tb, 0.9);
+        hit(oc, out, nb, tb + spb / 2, 0.05, 0.18, 7000);
+        tone(oc, out, 'square', root - 24, tb, spb * 0.45, 0.22, 0.005, 0.05);
+        tone(oc, out, 'square', root - 24, tb + spb / 2, spb * 0.4, 0.16, 0.005, 0.05);
+        var arp = [0, 7, third[root], 12];
+        tone(oc, out, 'triangle', root + arp[b], tb, spb * 0.9, 0.12, 0.01, 0.2);
+      }
+    }
+  }
+  function buildGlass(oc, def) {
+    var out = oc.createGain(); out.gain.value = 0.45;
+    var lp = oc.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600;
+    out.connect(lp); lp.connect(oc.destination);
+    var spb = 60 / def.bpm;
+    var chords = [[48, 55, 64], [45, 52, 60], [50, 57, 65], [43, 50, 59]]; /* C Am Dm G */
+    for (var bar = 0; bar < def.bars; bar++) {
+      var ch = chords[bar % 4], t0 = bar * 4 * spb, dur = 4 * spb;
+      for (var i = 0; i < ch.length; i++) {
+        tone(oc, out, 'sawtooth', ch[i], t0, dur, 0.07, 1.2, 1.4, -6);
+        tone(oc, out, 'sawtooth', ch[i], t0, dur, 0.07, 1.2, 1.4, 6);
+      }
+      for (var b = 0; b < 4; b++) tone(oc, out, 'sine', ch[(b * 2) % 3] + 12, t0 + b * spb, spb * 0.5, 0.1, 0.005, 0.3);
+    }
+  }
+  function buildDrift(oc, def) {
+    var out = oc.createGain(); out.gain.value = 0.5;
+    var lp = oc.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800;
+    out.connect(lp); lp.connect(oc.destination);
+    var nb = noiseBuf(oc);
+    var bed = oc.createBufferSource(); bed.buffer = nb; bed.loop = true;
+    var bf = oc.createBiquadFilter(); bf.type = 'bandpass'; bf.frequency.value = 4000; bf.Q.value = 0.4;
+    var bg = oc.createGain(); bg.gain.value = 0.015;
+    bed.connect(bf); bf.connect(bg); bg.connect(oc.destination); bed.start(0);
+    var spb = 60 / def.bpm;
+    var chords = [[45, 52, 55, 60], [41, 48, 52, 57], [43, 50, 53, 58], [45, 52, 55, 60]]; /* Am7 Fmaj7 G7 Am7 */
+    for (var bar = 0; bar < def.bars; bar++) {
+      var ch = chords[bar % 4], t0 = bar * 4 * spb;
+      for (var i = 0; i < ch.length; i++) tone(oc, out, 'triangle', ch[i], t0 + i * 0.03, 4 * spb * 0.95, 0.09, 0.4, 1.2);
+      kick(oc, out, t0, 0.8); kick(oc, out, t0 + 2.5 * spb, 0.55);
+      hit(oc, out, nb, t0 + spb, 0.09, 0.22, 1500);
+      hit(oc, out, nb, t0 + 3 * spb, 0.09, 0.22, 1500);
+    }
+  }
+
   window.__film = { seek: seek, play: play, pause: pause, restart: restart, fs: toggleFs, setCut: function (n) { setCut(n); seek(0); }, get t() { return t; } };
 
   /* ---------- STUDIO: UI + boot ---------- */
@@ -791,6 +974,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     $('#st-rec').disabled = recState.state !== 'idle';
     $('#c-rec').textContent = recState.state === 'recording' ? '■ STOP'
       : recState.state === 'arming' ? '…' : '● REC';
+    $('#st-music-name').textContent = MUSIC.sel.label;
   }
   $('#st-cutsel').addEventListener('click', function () {
     setCut(cutName === 'full' ? 'ph' : 'full');
@@ -812,6 +996,20 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     studioRec(cut);
   });
 
+  document.querySelectorAll('input[name="mp"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      var v = r.value;
+      $('#mp-api').style.display = v === 'api' ? '' : 'none';
+      if (v === 'none') setMusic({ type: 'none' });
+      else if (v === 'pulse' || v === 'glass' || v === 'drift') setMusic({ type: 'synth', id: v });
+      /* 'file' e 'api' só selecionam ao carregar arquivo / clicar Usar */
+    });
+  });
+  $('#mp-vol').addEventListener('input', function () {
+    MUSIC.gainBase = $('#mp-vol').value / 100;
+    if (musicGain) musicGain.gain.value = MUSIC.gainBase;
+  });
+
   var studioApi = {
     get state() { return recState.state; },
     get lastTake() { return recState.lastTake; },
@@ -821,7 +1019,10 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     rec: studioRec,
     stop: function () { stopTake('partial'); },
     abort: studioAbortArming,
-    pickMime: pickMime
+    pickMime: pickMime,
+    setMusic: setMusic,
+    renderSynth: renderSynth,
+    get music() { return { sel: MUSIC.sel, route: MUSIC.route, credit: MUSIC.credit }; }
   };
   window.__film.studio = studioApi;
   updateStudioUi();
