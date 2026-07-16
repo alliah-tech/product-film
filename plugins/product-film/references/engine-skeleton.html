@@ -664,7 +664,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
   function fmtMB(n) { return (n / 1048576).toFixed(2) + ' MB'; }
 
-  function wantsTabAudio() { return false; } /* Task 6 (rota element da API) muda isto */
+  function wantsTabAudio() {
+    return cutName === 'full' && MUSIC.sel.type === 'api' && MUSIC.route === 'element';
+  }
   function prepMusic() {
     var wait = MUSIC.pending || Promise.resolve();
     return wait.then(function () {
@@ -965,6 +967,63 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     }
   }
 
+  /* ---------- STUDIO: Openverse (música CC por API) ---------- */
+  function openverseSearch(q) {
+    var u = 'https://api.openverse.org/v1/audio/?q=' + encodeURIComponent(q) + '&category=music&page_size=10';
+    return fetch(u, { headers: { 'Accept': 'application/json' } }).then(function (r) {
+      if (!r.ok) throw new Error('openverse http ' + r.status);
+      return r.json();
+    }).then(function (j) {
+      return (j.results || []).map(function (x) {
+        return {
+          id: x.id, title: x.title || 'sem título', creator: x.creator || '',
+          license: String(x.license || '').toUpperCase(), licVer: x.license_version || '',
+          url: x.url, dur: x.duration || 0
+        };
+      });
+    });
+  }
+  function creditFor(trk) {
+    var lic = trk.license === 'CC0' ? 'CC0' : 'CC ' + trk.license + (trk.licVer ? ' ' + trk.licVer : '');
+    return '"' + trk.title + '" — ' + (trk.creator || 'autor desconhecido') + ' (' + lic + '), via Openverse';
+  }
+  function pickApiTrack(trk) {
+    return fetch(trk.url, { mode: 'cors' }).then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.arrayBuffer();
+    }).then(function (ab) {
+      ensureCtx();
+      return actx.decodeAudioData(ab);
+    }).then(function (buf) {
+      MUSIC.buf = buf; MUSIC.el = null; MUSIC.route = 'buffer';
+      finishApiSel(trk);
+    }).catch(function () {
+      /* CORS/decodificação falhou: toca via <audio>; gravação precisa do áudio da guia */
+      MUSIC.buf = null; MUSIC.route = 'element';
+      MUSIC.el = new Audio(); MUSIC.el.src = trk.url; MUSIC.el.loop = true;
+      finishApiSel(trk);
+    });
+  }
+  function finishApiSel(trk) {
+    MUSIC.sel = { type: 'api', label: trk.title };
+    MUSIC.credit = creditFor(trk);
+    $('#mp-credit').textContent = MUSIC.credit;
+    $('#mp-credit-row').style.display = '';
+    $('#mp-note').textContent = MUSIC.route === 'element'
+      ? 'esta faixa não permite mixagem direta (CORS): ao gravar, marque "compartilhar áudio da guia" no picker.'
+      : '';
+    updateStudioUi();
+    if (playing) startMusicAt(t);
+  }
+  function copyText(s) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s);
+    var ta = document.createElement('textarea');
+    ta.value = s; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+    return Promise.resolve();
+  }
+
   window.__film = { seek: seek, play: play, pause: pause, restart: restart, fs: toggleFs, setCut: function (n) { setCut(n); seek(0); }, get t() { return t; } };
 
   /* ---------- STUDIO: UI + boot ---------- */
@@ -1026,6 +1085,34 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     });
   });
 
+  $('#mp-go').addEventListener('click', function () {
+    var q = $('#mp-q').value.trim();
+    if (!q) return;
+    $('#mp-list').textContent = 'buscando…';
+    openverseSearch(q).then(function (list) {
+      $('#mp-list').innerHTML = '';
+      if (!list.length) { $('#mp-list').textContent = 'nada encontrado.'; return; }
+      list.forEach(function (trk) {
+        var row = document.createElement('div');
+        row.className = 'mp-tk';
+        var label = document.createElement('span');
+        label.textContent = trk.title + ' — ' + (trk.creator || '?') + ' [' + trk.license + ']';
+        var use = document.createElement('button');
+        use.textContent = 'Usar';
+        use.addEventListener('click', function () { $('#mp-list').querySelectorAll('button').forEach(function (b) { b.disabled = true; }); pickApiTrack(trk); });
+        row.appendChild(label); row.appendChild(use);
+        $('#mp-list').appendChild(row);
+      });
+    }).catch(function (e) {
+      $('#mp-list').textContent = 'busca falhou (' + e.message + ') — offline ou preview com rede bloqueada.';
+    });
+  });
+  $('#mp-copy').addEventListener('click', function () { copyText(MUSIC.credit); });
+  if (STUDIO_ENV.iframe) {
+    $('#mp-api-radio').disabled = true;
+    $('#mp-api-radio').parentElement.title = 'indisponível no preview (rede bloqueada pelo CSP do artifact)';
+  }
+
   var studioApi = {
     get state() { return recState.state; },
     get lastTake() { return recState.lastTake; },
@@ -1038,6 +1125,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     pickMime: pickMime,
     setMusic: setMusic,
     renderSynth: renderSynth,
+    openverseSearch: openverseSearch,
+    pickApiTrack: pickApiTrack,
     get music() { return { sel: MUSIC.sel, route: MUSIC.route, credit: MUSIC.credit }; }
   };
   window.__film.studio = studioApi;
