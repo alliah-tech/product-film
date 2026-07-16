@@ -41,3 +41,25 @@ test('makeGif do take gera image/gif', async ({ page }) => {
   expect(r.type).toBe('image/gif');
   expect(r.size).toBeGreaterThan(5000);
 });
+
+test('makeGif revoga objectURL também na falha (janela vazia)', async ({ page }) => {
+  test.setTimeout(120000);
+  await page.addInitScript(FAKE_GDM);
+  await page.goto(PAGE);
+  await page.evaluate(() => { window.__film.studio.autoDownload = false; });
+  await page.evaluate(() => window.__film.studio.rec('ph'));
+  await page.waitForFunction(() => window.__film.studio.state === 'idle' && !!window.__film.studio.lastTake, null, { timeout: 40000 });
+  const r = await page.evaluate(async () => {
+    let revoked = 0;
+    const orig = URL.revokeObjectURL.bind(URL);
+    URL.revokeObjectURL = (u) => { revoked++; return orig(u); };
+    let rejected = false, msg = '';
+    try { await window.__film.studio.makeGif({ width: 480, fps: 10, from: 2, to: 2 }); }
+    catch (e) { rejected = true; msg = e.message; }
+    URL.revokeObjectURL = orig;
+    return { rejected, msg, revoked };
+  });
+  expect(r.rejected).toBe(true);
+  expect(r.msg).toContain('janela vazia');
+  expect(r.revoked).toBe(1);
+});

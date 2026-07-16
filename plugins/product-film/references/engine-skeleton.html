@@ -1122,8 +1122,17 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     return new Promise(function (resolve, reject) {
       var v = document.createElement('video');
       v.muted = true; v.preload = 'auto';
-      v.src = URL.createObjectURL(tk.blob);
-      v.addEventListener('error', function () { reject(new Error('não consegui decodificar o take')); });
+      var url = URL.createObjectURL(tk.blob);
+      v.src = url;
+      var settled = false;
+      /* revoga o objectURL em TODO desfecho (sucesso ou falha) */
+      function finish(err, blob) {
+        if (settled) return;
+        settled = true;
+        URL.revokeObjectURL(url);
+        if (err) reject(err); else resolve(blob);
+      }
+      v.addEventListener('error', function () { finish(new Error('não consegui decodificar o take')); });
       v.addEventListener('loadedmetadata', function () {
         /* WebM do MediaRecorder pode vir com duration=Infinity: seek grande corrige */
         var fix = isFinite(v.duration) ? Promise.resolve() : new Promise(function (res) {
@@ -1140,12 +1149,11 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
           var cx = cv.getContext('2d', { willReadFrequently: true });
           var frames = [], times = [];
           for (var tt = from; tt < to; tt += 1 / fps) times.push(tt);
-          if (!times.length) { reject(new Error('janela vazia')); return; }
+          if (!times.length) { finish(new Error('janela vazia')); return; }
           var i = 0;
           (function step() {
             if (i >= times.length) {
-              URL.revokeObjectURL(v.src);
-              resolve(encodeGif(frames, w2, h2, Math.round(100 / fps)));
+              finish(null, encodeGif(frames, w2, h2, Math.round(100 / fps)));
               return;
             }
             v.currentTime = times[i];
