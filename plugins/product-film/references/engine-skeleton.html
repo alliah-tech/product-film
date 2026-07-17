@@ -160,6 +160,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 .mp-title, .gp-title { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
 .mp-row { display: flex; align-items: center; gap: 8px; }
 .mp-row .mp-prev { margin-left: auto; min-width: 38px; }
+.mp-row.mp-off { opacity: .55; cursor: not-allowed; }
 .mp-search { display: flex; gap: 8px; }
 .mp-search input, #music-panel input[type=text] { flex: 1; background: var(--color-surface-code); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); padding: 6px 10px; }
 #mp-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow: auto; }
@@ -1482,8 +1483,15 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   });
   $('#mp-copy').addEventListener('click', function () { copyText(MUSIC.credit); });
   if (STUDIO_ENV.iframe) {
+    /* Openverse needs the network and the artifact CSP blocks it. A disabled
+       radio alone reads as a dead click — dim the row and say why, inline. */
     $('#mp-api-radio').disabled = true;
-    $('#mp-api-radio').parentElement.title = 'unavailable in the preview (network blocked by the artifact CSP)';
+    var apiRow = $('#mp-api-radio').parentElement;
+    apiRow.classList.add('mp-off');
+    var apiNote = document.createElement('span');
+    apiNote.className = 'mp-note';
+    apiNote.textContent = '— unavailable in this preview (network blocked)';
+    apiRow.appendChild(apiNote);
   }
 
   $('#tt-gif').addEventListener('click', function () {
