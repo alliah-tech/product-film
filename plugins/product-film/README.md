@@ -34,7 +34,8 @@ music / start screen). Optional theme music mixed into the file on either cut (b
 synthesized tracks with ▶ audition, local MP3 or CC search on Openverse with copyable
 credit; the panel reminds that Product Hunt autoplays muted). From the take you can
 derive a GIF (256 palette + dithering) right in the browser. In the artifact preview
-(iframe) recording is blocked by the browser — download the HTML and open it locally.
+(iframe) recording is blocked by the browser — the start screen offers a ⬇ button that
+downloads the HTML itself; open it locally and record.
 
 Dev: `npm install && npx playwright install chromium && npm test` runs the suite
 (Playwright headed with a fake getDisplayMedia — deterministic, no picker).

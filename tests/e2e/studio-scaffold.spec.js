@@ -15,6 +15,7 @@ test('studio exposes idle state and env with canRec', async ({ page }) => {
   await expect(page.locator('.cb-rec[data-rec="full"]')).toBeVisible();
   await expect(page.locator('.cb-rec[data-rec="ph"]')).toBeVisible();
   await expect(page.locator('#st-nohint')).toBeHidden();
+  await expect(page.locator('#st-dl')).toBeHidden(); /* local file: nothing to download */
 });
 
 test('in an iframe it degrades to a hint (no REC)', async ({ page }) => {
@@ -25,4 +26,19 @@ test('in an iframe it degrades to a hint (no REC)', async ({ page }) => {
   await expect(f.locator('.cb-rec[data-rec="ph"]')).toBeHidden();
   const frame = page.frame({ url: /engine-skeleton/ });
   expect(await frame.evaluate(() => window.__film.studio.env.canRec)).toBe(false);
+});
+
+test('in an iframe, ⬇ downloads the HTML itself (pristine self-copy)', async ({ page }) => {
+  await page.goto('/tests/fixtures/iframe-host.html');
+  const f = page.frameLocator('#host');
+  await expect(f.locator('#st-dl')).toBeVisible();
+  const waiting = page.waitForEvent('download');
+  await f.locator('#st-dl').click();
+  const dl = await waiting;
+  expect(dl.suggestedFilename()).toMatch(/\.html$/);
+  const fs = require('fs');
+  const html = fs.readFileSync(await dl.path(), 'utf8');
+  expect(html.startsWith('<!doctype html>')).toBe(true);
+  expect(html).toContain('id="pause-menu"');      /* full film, not a fragment */
+  expect(html).toContain('function downloadSelf'); /* script travels along */
 });
