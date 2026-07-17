@@ -14,11 +14,11 @@ const RESULTS = {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(FAKE_GDM);
   await page.route('**/api.openverse.org/v1/audio/**', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(RESULTS) }));
-  /* sem header ACAO → fetch(cors) falha; <audio> (no-cors) funciona */
+  /* no ACAO header → fetch(cors) fails; <audio> (no-cors) works */
   await page.route('https://blocked.example/**', r => r.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.alloc(64) }));
 });
 
-test('busca lista faixas; CORS ok vira rota buffer com crédito copiável', async ({ page, context }) => {
+test('search lists tracks; CORS ok becomes the buffer route with copyable credit', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://localhost:4173' });
   await page.goto(PAGE);
   await page.click('#st-music');
@@ -35,7 +35,7 @@ test('busca lista faixas; CORS ok vira rota buffer com crédito copiável', asyn
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Neon Ride');
 });
 
-test('CORS bloqueado vira rota element e arma áudio da guia no REC', async ({ page }) => {
+test('blocked CORS becomes the element route and arms tab audio on REC', async ({ page }) => {
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
   await page.click('#st-music');
@@ -44,7 +44,7 @@ test('CORS bloqueado vira rota element e arma áudio da guia no REC', async ({ p
   await page.click('#mp-go');
   await page.locator('#mp-list .mp-tk button').nth(1).click();
   await page.waitForFunction(() => window.__film.studio.music.route === 'element');
-  await expect(page.locator('#mp-note')).toContainText('compartilhar');
+  await expect(page.locator('#mp-note')).toContainText('share tab audio');
   await page.click('#mp-close');
   await page.evaluate(() => window.__film.studio.rec('full'));
   await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 15000 });
@@ -54,8 +54,8 @@ test('CORS bloqueado vira rota element e arma áudio da guia no REC', async ({ p
   expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
 });
 
-test('REC logo após "Usar" ainda grava com áudio (race api)', async ({ page }) => {
-  /* atrasa o áudio CORS-ok para garantir que a seleção ainda está pendente no REC */
+test('REC right after "Use" still records with audio (api race)', async ({ page }) => {
+  /* delays the CORS-ok audio to make sure the selection is still pending at REC */
   await page.route('**/tests/fixtures/track.wav', async (r) => {
     await new Promise((res) => setTimeout(res, 1500));
     r.continue();
@@ -67,7 +67,7 @@ test('REC logo após "Usar" ainda grava com áudio (race api)', async ({ page })
   await page.fill('#mp-q', 'x');
   await page.click('#mp-go');
   await page.locator('#mp-list .mp-tk button').first().click();
-  /* NÃO espera a rota resolver */
+  /* does NOT wait for the route to resolve */
   await page.click('#mp-close');
   await page.evaluate(() => window.__film.studio.rec('full'));
   await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 25000 });
@@ -76,8 +76,8 @@ test('REC logo após "Usar" ainda grava com áudio (race api)', async ({ page })
   expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
 });
 
-test('trocar de faixa element-route pausa a anterior (sem áudio duplo)', async ({ page }) => {
-  /* duas faixas CORS-bloqueadas com corpo WAV válido: element toca, fetch falha */
+test('switching element-route track pauses the previous one (no double audio)', async ({ page }) => {
+  /* two CORS-blocked tracks with a valid WAV body: element plays, fetch fails */
   await page.route('**/api.openverse.org/v1/audio/**', (r) => r.fulfill({
     status: 200, contentType: 'application/json',
     body: JSON.stringify({ results: [
@@ -85,9 +85,9 @@ test('trocar de faixa element-route pausa a anterior (sem áudio duplo)', async 
       { id: 'b', title: 'Blocked B', creator: 'Y', license: 'by', license_version: '4.0', url: 'https://blocked.example/b.wav', duration: 30000 }
     ] })
   }));
-  /* Playwright espelha a Origin em access-control-allow-origin por padrão em fulfill()
-     cross-origin — precisa fixar um ACAO que não bate para o fetch(cors) falhar de verdade
-     (senão o WAV válido decodifica e a rota vira 'buffer', não 'element'). */
+  /* Playwright mirrors the Origin into access-control-allow-origin by default on cross-origin
+     fulfill() — you need to pin an ACAO that doesn't match for fetch(cors) to actually fail
+     (otherwise the valid WAV decodes and the route becomes 'buffer', not 'element'). */
   await page.route('https://blocked.example/**', (r) => r.fulfill({
     status: 200, contentType: 'audio/wav',
     headers: { 'access-control-allow-origin': 'https://cors-blocked.invalid' },
@@ -113,5 +113,5 @@ test('trocar de faixa element-route pausa a anterior (sem áudio duplo)', async 
   await page.click('#mp-go');
   await page.locator('#mp-list .mp-tk button').nth(1).click();
   await page.waitForFunction(() => window.__audios.length === 2);
-  expect(await page.evaluate(() => window.__audios[0].paused)).toBe(true); /* pre-fix: continua tocando */
+  expect(await page.evaluate(() => window.__audios[0].paused)).toBe(true); /* pre-fix: keeps playing */
 });

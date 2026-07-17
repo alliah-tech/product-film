@@ -5,17 +5,17 @@ const PAGE = '/plugins/product-film/references/engine-skeleton.html';
 
 test.beforeEach(async ({ page }) => { await page.addInitScript(FAKE_GDM); });
 
-test('renderSynth produz buffers estéreo com a duração do loop', async ({ page }) => {
+test('renderSynth produces stereo buffers with the loop duration', async ({ page }) => {
   await page.goto(PAGE);
   const r = await page.evaluate(async () => {
     const b = await window.__film.studio.renderSynth('pulse');
     return { dur: b.duration, ch: b.numberOfChannels };
   });
   expect(r.ch).toBe(2);
-  expect(r.dur).toBeCloseTo(16, 0); /* 8 compassos × 4 tempos ÷ 120bpm */
+  expect(r.dur).toBeCloseTo(16, 0); /* 8 bars × 4 beats ÷ 120bpm */
 });
 
-test('take full com Pulse sai com faixa de áudio; PH sai mudo', async ({ page }) => {
+test('full take with Pulse comes out with an audio track; PH comes out muted', async ({ page }) => {
   test.setTimeout(120000);
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
@@ -23,7 +23,7 @@ test('take full com Pulse sai com faixa de áudio; PH sai mudo', async ({ page }
   await page.evaluate(() => window.__film.studio.rec('full'));
   await page.waitForFunction(() => window.__film.studio.state === 'idle' && !!window.__film.studio.lastTake, null, { timeout: 40000 });
   expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
-  /* mesmo com música selecionada, PH grava mudo */
+  /* even with music selected, PH records muted */
   await page.evaluate(() => window.__film.studio.rec('ph'));
   await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 15000 });
   await page.evaluate(() => window.__film.studio.stop());
@@ -31,7 +31,7 @@ test('take full com Pulse sai com faixa de áudio; PH sai mudo', async ({ page }
   expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(0);
 });
 
-test('painel de música seleciona synth pela UI', async ({ page }) => {
+test('music panel selects a synth through the UI', async ({ page }) => {
   await page.goto(PAGE);
   await page.click('#st-music');
   await expect(page.locator('#music-panel')).toBeVisible();
@@ -40,10 +40,10 @@ test('painel de música seleciona synth pela UI', async ({ page }) => {
   await expect(page.locator('#st-music-name')).toHaveText('Glass (corporate)');
 });
 
-test('REC imediatamente após selecionar synth ainda grava com áudio (race)', async ({ page }) => {
+test('REC immediately after selecting a synth still records with audio (race)', async ({ page }) => {
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
-  /* NÃO aguarda setMusic: dispara e chama rec no mesmo tick ('drift' não tem cache) */
+  /* does NOT await setMusic: fires it and calls rec on the same tick ('drift' has no cache) */
   await page.evaluate(() => { window.__film.studio.setMusic({ type: 'synth', id: 'drift' }); return window.__film.studio.rec('full'); });
   await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 20000 });
   await page.evaluate(() => window.__film.studio.stop());
@@ -51,7 +51,7 @@ test('REC imediatamente após selecionar synth ainda grava com áudio (race)', a
   expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
 });
 
-test('dois takes full seguidos com synth gravam áudio VIVO nos dois (retake)', async ({ page }) => {
+test('two full takes in a row with synth record LIVE audio on both (retake)', async ({ page }) => {
   test.setTimeout(120000);
   await page.addInitScript(() => {
     const orig = MediaStream.prototype.addTrack;
@@ -72,5 +72,5 @@ test('dois takes full seguidos com synth gravam áudio VIVO nos dois (retake)', 
     expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
   }
   const states = await page.evaluate(() => window.__mixTrackStates);
-  expect(states).toEqual(['live', 'live']); /* pre-fix: segundo é 'ended' */
+  expect(states).toEqual(['live', 'live']); /* pre-fix: the second one is 'ended' */
 });

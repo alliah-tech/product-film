@@ -1,25 +1,25 @@
 <title>PRODUCT — Product Film</title>
 <!-- ============================================================
-  PRODUCT FILM — engine skeleton (auto-reproduzível, gravável)
-  Motor de referência para product films, testado em produção. Como usar:
-  1. Substitua o bloco de TOKENS pelos design tokens do produto.
-  2. Injete fontes woff2 como data URI nos placeholders __FONT*__
-     (baixe do Google Fonts com UA de browser; fontes VARIÁVEIS
-     cobrem vários pesos com 1 arquivo). CSP de artifact bloqueia CDN.
-  3. Construa as cenas (.scene) replicando o produto REAL (tokens +
-     componentes + valores de uma execução real — nunca invente UI).
-  4. Preencha as tabelas defFull()/defPh(): todo estado visual é
-     função pura de t (seekável: ?cut=full|ph&t=SEG&paused=1).
-  5. Verifique por seek com screenshots beat a beat antes de entregar.
+  PRODUCT FILM — engine skeleton (self-playing, recordable)
+  Reference engine for product films, tested in production. How to use:
+  1. Replace the TOKENS block with the product's design tokens.
+  2. Inject woff2 fonts as data URIs in the __FONT*__ placeholders
+     (download from Google Fonts with a browser UA; VARIABLE fonts
+     cover several weights with 1 file). Artifact CSP blocks CDNs.
+  3. Build the scenes (.scene) replicating the REAL product (tokens +
+     components + values from a real run — never invent UI).
+  4. Fill in the defFull()/defPh() tables: all visual state is
+     a pure function of t (seekable: ?cut=full|ph&t=SEC&paused=1).
+  5. Verify by seek with beat-by-beat screenshots before delivering.
   ============================================================ -->
 <style>
-/* __FONT_INJECTION__: troque pelos @font-face com data URI, ex.:
+/* __FONT_INJECTION__: swap for the @font-face rules with data URI, e.g.:
 @font-face { font-family: 'Display'; font-weight: 300 700; font-display: block;
   src: url(data:font/woff2;base64,__FONT_DISPLAY__) format('woff2'); } */
 
 :root {
   color-scheme: dark;
-  /* ===== TOKENS DO PRODUTO (EDIT-ME: copie do design system real) ===== */
+  /* ===== PRODUCT TOKENS (EDIT-ME: copy from the real design system) ===== */
   --color-bg: #0d0d1a;
   --color-surface: #1a1a2e;
   --color-surface-code: #0a0a18;
@@ -42,18 +42,18 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 * { box-sizing: border-box; }
 #app { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; }
 
-/* ---------- Stage 1920×1080 fixo, escalado para caber (letterbox) ---------- */
+/* ---------- Stage 1920×1080 fixed, scaled to fit (letterbox) ---------- */
 #stage {
   position: relative; width: 1920px; height: 1080px; flex: none;
   background: var(--color-bg); overflow: hidden;
   font-family: var(--font-body); color: var(--color-text);
   -webkit-font-smoothing: antialiased;
 }
-/* Camada de câmera — beats de zoom escalam isto */
+/* Camera layer — zoom beats scale this */
 #film { position: absolute; inset: 0; transform-origin: 50% 50%; will-change: transform; }
 .scene { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
 
-/* ===== CENAS DE EXEMPLO (EDIT-ME: substitua pelas réplicas do produto) ===== */
+/* ===== EXAMPLE SCENES (EDIT-ME: replace with the product's replicas) ===== */
 #sc-one .page { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 #sc-one .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 48px 64px; font-family: var(--font-display); font-size: 40px; }
 #sc-one .card b { color: var(--color-accent); }
@@ -70,8 +70,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 #sc-end.in .end-stack > :nth-child(2) { opacity: 1; transform: none; transition-delay: .09s; }
 #sc-end.in .end-stack > :nth-child(3) { opacity: 1; transform: none; transition-delay: .18s; }
 
-/* ============ MOBÍLIA DE PALCO (pronta — normalmente não mexer) ============ */
-/* Legendas cinéticas (placa bottom-center, 1 linha, ≤5 palavras) */
+/* ============ STAGE FURNITURE (ready — normally don't touch) ============ */
+/* Kinetic captions (bottom-center plate, 1 line, ≤5 words) */
 #captions { position: absolute; left: 0; right: 0; bottom: 96px; display: flex; justify-content: center; z-index: 50; pointer-events: none; }
 #cap-plate {
   display: flex; align-items: center; gap: 14px; max-width: 1100px; padding: 14px 28px;
@@ -82,25 +82,25 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 #cap-plate .ctx { font-family: var(--font-display); font-weight: 700; font-size: 40px; color: var(--color-text); white-space: nowrap; }
 #cap-plate .ctx em { font-style: normal; color: var(--color-accent); }
 
-/* Cursor falso (dot) + ripples de clique */
+/* Fake cursor (dot) + click ripples */
 #cursor { position: absolute; z-index: 60; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: rgba(232,232,240,.92); border: 1.5px solid rgba(13,13,26,.9); box-shadow: 0 2px 8px rgba(0,0,0,.45); opacity: 0; pointer-events: none; }
 #cursor.press { transform: scale(.82); }
 .ripple { position: absolute; z-index: 59; width: 20px; height: 20px; margin: -10px 0 0 -10px; border: 2px solid var(--color-accent); border-radius: 50%; pointer-events: none; }
 
-/* Spotlight (escurece tudo menos o alvo) */
+/* Spotlight (darkens everything but the target) */
 #dimring { position: absolute; z-index: 45; border-radius: var(--radius-lg); box-shadow: 0 0 0 9999px rgba(13,13,26,.55); opacity: 0; transition: opacity .26s var(--ease-default); pointer-events: none; }
 
-/* Barra de progresso do filme */
+/* Film progress bar */
 #progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; z-index: 70; background: rgba(42,42,74,.4); }
 #progress i { display: block; height: 100%; width: 100%; background: var(--color-accent); transform-origin: left; transform: scaleX(0); }
 
-/* Contagem 4·3·2·1 antes do play (folga para a gravação) */
+/* 4·3·2·1 countdown before play (slack for the recording) */
 #countdown { position: absolute; inset: 0; z-index: 110; background: var(--color-surface-code); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 18px; }
 #countdown.on { display: flex; }
 #countdown .num { font-family: var(--font-display); font-weight: 300; font-size: 240px; line-height: 1; color: var(--color-text); }
 #countdown .cd-sub { font-family: var(--font-mono); font-size: 14px; color: var(--color-text-dim); letter-spacing: .08em; }
 
-/* Start overlay (escolha de corte; nunca reaparece após o loop) */
+/* Start overlay (cut choice; never reappears after the loop) */
 #start { position: absolute; inset: 0; z-index: 100; background: var(--color-surface-code); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 34px; }
 #start .s-inner { display: flex; flex-direction: column; align-items: center; gap: 30px; }
 #start .s-cuts { display: flex; gap: 18px; }
@@ -111,24 +111,24 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 #start .s-hints { display: flex; gap: 26px; font-family: var(--font-mono); font-size: 13.5px; color: var(--color-text-dim); }
 #start .s-hints b { color: var(--color-text-muted); font-weight: 400; border: 1px solid var(--color-border-hover); border-radius: 5px; padding: 2px 8px; margin-right: 6px; }
 
-/* Controles fora do frame (auto-ocultos; somem NA HORA do play) */
+/* Controls outside the frame (auto-hidden; disappear IMMEDIATELY on play) */
 #controls { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 200; display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(10,10,24,.92); border: 1px solid var(--color-border-hover); border-radius: var(--radius-full); font-family: var(--font-mono); font-size: 13px; color: var(--color-text-muted); opacity: 0; transition: opacity .25s; pointer-events: none; }
 #controls.show { opacity: 1; pointer-events: auto; }
 #controls button { background: transparent; border: none; color: var(--color-text); font-family: var(--font-mono); font-size: 13px; padding: 6px 12px; border-radius: var(--radius-full); cursor: pointer; }
 #controls button:hover { background: var(--color-surface); }
 #controls .time { padding: 0 8px; min-width: 96px; text-align: center; font-variant-numeric: tabular-nums; }
 
-/* Cursor do SO some durante o play (o filme tem cursor cenográfico próprio) */
+/* The OS cursor disappears during play (the film has its own staged cursor) */
 #app.playing { cursor: none; }
 
-/* Aviso de fullscreen bloqueado (previews em iframe negam a API) */
+/* Fullscreen-blocked notice (iframe previews deny the API) */
 #fs-hint { position: fixed; top: 14px; right: 14px; z-index: 300; max-width: 420px; background: rgba(10,10,24,.96); border: 1px solid var(--color-border-hover); border-radius: 10px; padding: 14px 16px; font-family: var(--font-body); font-size: 13.5px; color: var(--color-text-muted); line-height: 1.55; display: none; }
 #fs-hint.on { display: block; }
 #fs-hint b { color: var(--color-text); }
 #fs-hint .row { display: flex; gap: 8px; margin-top: 10px; }
 #fs-hint button { border: 1px solid var(--color-border-hover); background: transparent; color: var(--color-text); border-radius: var(--radius-full); padding: 6px 13px; font-size: 12.5px; cursor: pointer; }
 
-/* ============ STUDIO (mobília pronta — normalmente não mexer) ============ */
+/* ============ STUDIO (ready furniture — normally don't touch) ============ */
 .s-studio { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 13px; }
 .stbtn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--color-border-hover); background: var(--color-surface); color: var(--color-text); border-radius: var(--radius-full); padding: 8px 16px; font-family: var(--font-mono); font-size: 13px; cursor: pointer; transition: border-color .2s; }
 .stbtn:hover { border-color: var(--color-accent); }
@@ -159,12 +159,12 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 <div id="app">
   <div id="stage">
     <div id="film">
-      <!-- ===== CENAS (EDIT-ME) ===== -->
+      <!-- ===== SCENES (EDIT-ME) ===== -->
       <section class="scene" id="sc-one">
         <div class="page">
           <div>
-            <div class="card">Replique o <b>produto real</b> aqui</div>
-            <button id="btn-acao">Ação primária</button>
+            <div class="card">Replicate the <b>real product</b> here</div>
+            <button id="btn-acao">Primary action</button>
           </div>
         </div>
       </section>
@@ -177,7 +177,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       </section>
     </div>
 
-    <!-- ===== MOBÍLIA (pronta) ===== -->
+    <!-- ===== FURNITURE (ready) ===== -->
     <div id="dimring"></div>
     <div id="captions"><div id="cap-plate"><span class="pfx">&gt;</span><span class="ctx" id="cap-text"></span></div></div>
     <div id="cursor"></div>
@@ -188,15 +188,15 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       <div class="s-inner">
         <div style="font-family:var(--font-display);font-weight:700;font-size:56px">Product<span style="color:var(--color-accent)">Name</span></div>
         <div class="s-cuts">
-          <button class="cutbtn" data-cut="full"><span class="cb-t">Full cut &#9656;</span><span class="cb-d">Corte completo para YouTube/landing.</span></button>
-          <button class="cutbtn" data-cut="ph"><span class="cb-t">Short loop &#9656;</span><span class="cb-d">Loop mudo ~20s para Product Hunt.</span></button>
+          <button class="cutbtn" data-cut="full"><span class="cb-t">Full cut &#9656;</span><span class="cb-d">Full cut for YouTube/landing.</span></button>
+          <button class="cutbtn" data-cut="ph"><span class="cb-t">Short loop &#9656;</span><span class="cb-d">Muted ~20s loop for Product Hunt.</span></button>
         </div>
         <div class="s-hints"><span><b>F</b>fullscreen</span><span><b>Space</b>play/pause</span><span><b>R</b>restart</span><span><b>&larr;&nbsp;&rarr;</b>&plusmn;2s</span><span><b>Esc</b>pause</span></div>
         <div class="s-studio" id="st-row">
-          <button class="stbtn" id="st-rec"><span class="rec-dot"></span>Gravar take</button>
+          <button class="stbtn" id="st-rec"><span class="rec-dot"></span>Record take</button>
           <button class="stbtn" id="st-cutsel">FULL</button>
-          <button class="stbtn" id="st-music">&#9834; <span id="st-music-name">Nenhuma</span></button>
-          <span id="st-nohint" style="display:none">Grava&ccedil;&atilde;o in-page indispon&iacute;vel neste preview &mdash; baixe o HTML e abra localmente no Chrome. A m&uacute;sica-tema continua dispon&iacute;vel.</span>
+          <button class="stbtn" id="st-music">&#9834; <span id="st-music-name">None</span></button>
+          <span id="st-nohint" style="display:none">In-page recording unavailable in this preview &mdash; download the HTML and open it locally in Chrome. The theme music is still available.</span>
         </div>
       </div>
     </div>
@@ -211,38 +211,38 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     <button id="c-rec">&#9679; REC</button>
   </div>
 
-  <div id="st-toast"><span id="st-toast-msg"></span><button id="tt-dl">Baixar de novo</button><button id="tt-gif">Gerar GIF</button><button id="tt-rerec">Regravar</button><button id="tt-x">&times;</button></div>
+  <div id="st-toast"><span id="st-toast-msg"></span><button id="tt-dl">Download again</button><button id="tt-gif">Make GIF</button><button id="tt-rerec">Re-record</button><button id="tt-x">&times;</button></div>
 
   <div id="music-panel">
-    <div class="mp-title">M&uacute;sica-tema <span class="mp-note">(corte full &middot; PH &eacute; mudo por conven&ccedil;&atilde;o)</span></div>
-    <label class="mp-row"><input type="radio" name="mp" value="none" checked> Nenhuma</label>
+    <div class="mp-title">Theme music <span class="mp-note">(full cut &middot; PH is muted by convention)</span></div>
+    <label class="mp-row"><input type="radio" name="mp" value="none" checked> None</label>
     <label class="mp-row"><input type="radio" name="mp" value="pulse"> Pulse (upbeat)</label>
     <label class="mp-row"><input type="radio" name="mp" value="glass"> Glass (corporate)</label>
     <label class="mp-row"><input type="radio" name="mp" value="drift"> Drift (lo-fi)</label>
-    <label class="mp-row"><input type="radio" name="mp" value="file"> Arquivo local&hellip; <input type="file" id="mp-file" accept="audio/*"></label>
-    <label class="mp-row"><input type="radio" name="mp" value="api" id="mp-api-radio"> Buscar (Openverse, CC)</label>
+    <label class="mp-row"><input type="radio" name="mp" value="file"> Local file&hellip; <input type="file" id="mp-file" accept="audio/*"></label>
+    <label class="mp-row"><input type="radio" name="mp" value="api" id="mp-api-radio"> Search (Openverse, CC)</label>
     <div id="mp-api" style="display:none">
-      <div class="mp-search"><input id="mp-q" type="text" placeholder="ex.: upbeat electronic"><button id="mp-go">Buscar</button></div>
+      <div class="mp-search"><input id="mp-q" type="text" placeholder="e.g.: upbeat electronic"><button id="mp-go">Search</button></div>
       <div id="mp-list"></div>
-      <div class="mp-row" id="mp-credit-row" style="display:none"><span class="mp-note" id="mp-credit"></span><button id="mp-copy">copiar cr&eacute;dito</button></div>
+      <div class="mp-row" id="mp-credit-row" style="display:none"><span class="mp-note" id="mp-credit"></span><button id="mp-copy">copy credit</button></div>
     </div>
     <div class="mp-vol"><span class="mp-note">vol</span><input id="mp-vol" type="range" min="0" max="100" value="70"></div>
     <div class="mp-note" id="mp-note"></div>
-    <div class="mp-row"><button id="mp-close">fechar</button></div>
+    <div class="mp-row"><button id="mp-close">close</button></div>
   </div>
 
   <div id="gif-panel">
-    <div class="gp-title">GIF do take</div>
-    <div class="gp-row">largura <select id="gp-w"><option>480</option><option selected>640</option><option>800</option></select> fps <select id="gp-fps"><option>10</option><option selected>12</option><option>15</option></select></div>
-    <div class="gp-row">de <input id="gp-from" type="number" min="0" step="0.5" value="0"> s at&eacute; <input id="gp-to" type="number" min="0" step="0.5"> s <span class="gp-dim">(vazio = fim)</span></div>
-    <div class="gp-row"><button id="gp-make">Gerar &amp; baixar</button><button id="gp-close">fechar</button></div>
+    <div class="gp-title">GIF from the take</div>
+    <div class="gp-row">width <select id="gp-w"><option>480</option><option selected>640</option><option>800</option></select> fps <select id="gp-fps"><option>10</option><option selected>12</option><option>15</option></select></div>
+    <div class="gp-row">from <input id="gp-from" type="number" min="0" step="0.5" value="0"> s to <input id="gp-to" type="number" min="0" step="0.5"> s <span class="gp-dim">(empty = end)</span></div>
+    <div class="gp-row"><button id="gp-make">Generate &amp; download</button><button id="gp-close">close</button></div>
     <div id="gp-prog"><i></i></div>
     <div class="mp-note" id="gp-out"></div>
   </div>
 
   <div id="fs-hint" role="alert">
-    <b>Fullscreen bloqueado aqui.</b> Previews embutidos (iframe) negam a API. Abra numa aba própria, abra o arquivo local no browser, ou grave a região do palco com OBS.
-    <div class="row"><button id="fs-open">Abrir standalone &nearr;</button><button id="fs-dismiss">Fechar</button></div>
+    <b>Fullscreen blocked here.</b> Embedded previews (iframe) deny the API. Open it in its own tab, open the local file in the browser, or record the stage region with OBS.
+    <div class="row"><button id="fs-open">Open standalone &nearr;</button><button id="fs-dismiss">Close</button></div>
   </div>
 </div>
 
@@ -251,7 +251,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   'use strict';
   var $ = function (s) { return document.querySelector(s); };
 
-  /* ---------- easing (curvas iguais às do produto) ---------- */
+  /* ---------- easing (same curves as the product's) ---------- */
   function cubicBezier(x1, y1, x2, y2) {
     return function (t) {
       if (t <= 0) return 0; if (t >= 1) return 1;
@@ -267,7 +267,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
   var easeDefault = cubicBezier(0.4, 0, 0.2, 1);
   var easeDecel = cubicBezier(0, 0, 0.2, 1);
-  var easeCursor = cubicBezier(0.4, 0.05, 0.15, 1); /* perfil humano (Fitts) */
+  var easeCursor = cubicBezier(0.4, 0.05, 0.15, 1); /* human profile (Fitts) */
   function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
   function win(t, a, b) { return clamp01((t - a) / (b - a)); }
   function lerp(a, b, p) { return a + (b - a) * p; }
@@ -280,7 +280,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   var startOv = $('#start'), controls = $('#controls');
   var cdEl = $('#countdown'), cdNum = $('#countdown .num'), fsHint = $('#fs-hint');
 
-  /* ---------- fit do palco (letterbox) ---------- */
+  /* ---------- stage fit (letterbox) ---------- */
   function fit() {
     var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
     stage.style.transform = 'scale(' + s + ')';
@@ -288,9 +288,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
   window.addEventListener('resize', fit); fit();
 
-  /* Posição em coordenadas do palco (funciona com câmera com zoom).
-     ATENÇÃO: elemento com display:none tem rect (0,0) — para alvos que
-     trocam de display no meio do gesto, ancore por coordenadas fixas. */
+  /* Position in stage coordinates (works with a zoomed camera).
+     WARNING: an element with display:none has rect (0,0) — for targets that
+     switch display in the middle of the gesture, anchor by fixed coordinates. */
   function stagePos(sel, fx, fy) {
     var el = typeof sel === 'string' ? $(sel) : sel;
     if (!el) return { x: 960, y: 540 };
@@ -303,22 +303,22 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
 
   /* ============================================================
-     TABELAS DOS CORTES (EDIT-ME) — todo estado visual = f(t).
-     Tracks disponíveis:
-       scenes:       [{el, w:[in,out]}]           crossfade automático
+     CUT TABLES (EDIT-ME) — all visual state = f(t).
+     Available tracks:
+       scenes:       [{el, w:[in,out]}]           automatic crossfade
        caps:         [[in, out, 'html <em>kw</em>']]
-       classW:       [[el, 'classe', in, out]]    estados CSS por janela
+       classW:       [[el, 'class', in, out]]     CSS states by window
        cursor:       {showW, way:[{t, sel|x/y, fx, fy, click?}]}
-       camera:       [{w, scale:[a,b], sel}]      zoom com origem no alvo
+       camera:       [{w, scale:[a,b], sel}]      zoom with origin on the target
        dims:         [{w, sel, pad}]              spotlight
        scrollTracks: [{el, list:[{w, from?, to?|toSel+off|rel}]}]
-       url/chrome/ghost/textura: estenda estas tabelas conforme o produto exigir.
+       url/chrome/ghost/texture: extend these tables as the product requires.
      ============================================================ */
   function defFull() {
     return {
       dur: 10.0,
       caps: [
-        [0.8, 3.0, 'Legenda curta com <em>keyword</em>'],
+        [0.8, 3.0, 'Short caption with <em>keyword</em>'],
         [4.2, 6.5, 'One click']
       ],
       scenes: [
@@ -350,11 +350,11 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
   function defPh() {
     var d = defFull();
-    d.dur = 8.0; /* EDIT-ME: corte curto próprio (PH pede ~20s, mudo, loop) */
+    d.dur = 8.0; /* EDIT-ME: its own short cut (PH calls for ~20s, muted, loop) */
     return d;
   }
 
-  /* ---------- engine (pronto — normalmente não mexer) ---------- */
+  /* ---------- engine (ready — normally don't touch) ---------- */
   var CUT = null, cutName = 'full';
   var t = 0, playing = false, raf = null, lastTs = null, started = false;
 
@@ -424,7 +424,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     dimring.style.height = (r.height / k + pad * 2) + 'px';
     dimring.style.opacity = (t <= d.w[1]) ? 1 : (1 - win(t, d.w[1], d.w[1] + 0.25));
   }
-  /* Um browser real para no fim do documento — clamp obrigatório. */
+  /* A real browser stops at the end of the document — clamp is mandatory. */
   function applyScroll(t) {
     CUT.scrollTracks.forEach(function (tr) {
       var y = 0, base = 0;
@@ -459,7 +459,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     var p = (b.t === a.t) ? 1 : easeCursor(win(t, a.t, b.t));
     var x = lerp(pa.x, pb.x, p), y = lerp(pa.y, pb.y, p);
     var dist = Math.hypot(pb.x - pa.x, pb.y - pa.y);
-    if (dist > 60) y -= Math.sin(p * Math.PI) * Math.min(26, dist * 0.05); /* arco humano */
+    if (dist > 60) y -= Math.sin(p * Math.PI) * Math.min(26, dist * 0.05); /* human arc */
     cursor.style.left = x + 'px'; cursor.style.top = y + 'px';
     var pressed = false, frag = '';
     ws.forEach(function (w) {
@@ -488,7 +488,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     studioOnApply(t);
   }
 
-  /* ---------- playback + contagem + gravação limpa ---------- */
+  /* ---------- playback + countdown + clean recording ---------- */
   function frame(ts) {
     raf = null;
     if (lastTs != null && playing) {
@@ -503,8 +503,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     if (playing) return;
     playing = true; lastTs = null;
     $('#c-play').innerHTML = '&#10074;&#10074;';
-    app.classList.add('playing');            /* cursor do SO some */
-    controls.classList.remove('show');       /* controles somem NA HORA */
+    app.classList.add('playing');            /* the OS cursor disappears */
+    controls.classList.remove('show');       /* controls disappear IMMEDIATELY */
     clearTimeout(hideTimer);
     suppressUntil = performance.now() + 1500;
     raf = requestAnimationFrame(frame);
@@ -549,7 +549,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   $('#c-cut').addEventListener('click', function () { pause(); setCut(cutName === 'full' ? 'ph' : 'full'); seek(0); startCountdown(play); });
   $('#c-full').addEventListener('click', function () { toggleFs(); });
 
-  /* Fullscreen: previews em iframe (artifacts etc.) NEGAM a API — detectar e oferecer saídas. */
+  /* Fullscreen: iframe previews (artifacts etc.) DENY the API — detect it and offer ways out. */
   function toggleFs() {
     if (document.fullscreenElement) { document.exitFullscreen(); return; }
     var req = null;
@@ -575,7 +575,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     else if (e.key === 'Escape') { if (playing) pause(); }
   });
 
-  /* Durante o play, só mouse na BORDA INFERIOR revela os controles (take limpo). */
+  /* During play, only the mouse on the BOTTOM EDGE reveals the controls (clean take). */
   var hideTimer = null, suppressUntil = 0;
   function pokeControls() {
     if (!started || counting) return;
@@ -594,8 +594,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   setCut('full');
   apply(0);
 
-  /* ?cut=full|ph&t=SEG&paused=1 → testar beats por screenshot (headless
-     estrangula rAF: verifique por SEEK, não assistindo playback). */
+  /* ?cut=full|ph&t=SEC&paused=1 → test beats by screenshot (headless
+     throttles rAF: verify by SEEK, not by watching playback). */
   var q = new URLSearchParams(location.search);
   if (q.get('cut') || q.get('t') != null) {
     setCut(q.get('cut') === 'ph' ? 'ph' : 'full');
@@ -606,9 +606,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
 
   /* ============================================================
-     STUDIO (mobília pronta — normalmente não mexer)
-     Take one-click → MP4/WebM, música-tema mixada, GIF do take.
-     Integração com o engine: só pelos hooks studioOn*.
+     STUDIO (ready furniture — normally don't touch)
+     One-click take → MP4/WebM, theme music mixed in, GIF from the take.
+     Integration with the engine: only through the studioOn* hooks.
      ============================================================ */
   var STUDIO_ENV = {
     iframe: (function () { try { return window.top !== window; } catch (e) { return true; } })(),
@@ -623,7 +623,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     autoDownload: true
   };
 
-  /* Hooks chamados pelo engine (corpos preenchidos nas seções seguintes). */
+  /* Hooks called by the engine (bodies filled in the following sections). */
   function studioOnPlay() { startMusicAt(t); }
   function studioOnPause() {
     if (recState.state === 'recording') { stopTake('partial'); return; }
@@ -632,7 +632,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   function studioOnSeek(nt) { if (playing) startMusicAt(nt); }
   function studioOnApply(tt) {
     if (!fadeGain || !CUT) return;
-    /* fade-in 0.5s e fade-out 1.5s do corte full, como função de t */
+    /* fade-in 0.5s and fade-out 1.5s of the full cut, as a function of t */
     fadeGain.gain.value = (cutName === 'full') ? Math.min(win(tt, 0, 0.5), 1 - win(tt, CUT.dur - 1.5, CUT.dur)) : 1;
   }
   function studioOnWrap() {
@@ -642,7 +642,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
   function studioOnCountdownCancel() { studioAbortArming(); }
 
-  /* ---------- STUDIO: captura ---------- */
+  /* ---------- STUDIO: capture ---------- */
   function mimeCandidates(withAudio) {
     return withAudio ? [
       'video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4',
@@ -694,7 +694,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
         : Promise.resolve();
       return crop.then(function () {
         var mixTrack = mixerAudioTrack();
-        /* clone: parar o take nao pode matar a track singleton do recDest */
+        /* clone: stopping the take must not kill recDest's singleton track */
         if (mixTrack) stream.addTrack(mixTrack.clone());
         vt.addEventListener('ended', function () {
           if (recState.state === 'recording') stopTake('partial');
@@ -716,7 +716,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     });
     recState.recorder.ondataavailable = function (e) { if (e.data && e.data.size) recState.chunks.push(e.data); };
     recState.recorder.onstop = onRecorderStop;
-    /* take limpo: nada de painel/toast na guia capturada */
+    /* clean take: no panel/toast on the captured tab */
     $('#st-toast').classList.remove('on');
     $('#music-panel').classList.remove('on');
     $('#gif-panel').classList.remove('on');
@@ -766,8 +766,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
   function toastTake() {
     var tk = recState.lastTake; if (!tk) return;
-    var note = extFor(tk.mime) === 'webm' ? ' · webm (mp4 indisponível neste browser)' : '';
-    toastMsg((tk.partial ? 'take parcial' : 'take salvo') + ' · ' + fmtMB(tk.blob.size) + note);
+    var note = extFor(tk.mime) === 'webm' ? ' · webm (mp4 unavailable in this browser)' : '';
+    toastMsg((tk.partial ? 'partial take' : 'take saved') + ' · ' + fmtMB(tk.blob.size) + note);
   }
 
   function studioRec(cut) {
@@ -786,21 +786,21 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       return true;
     }).catch(function (e) {
       studioAbortArming();
-      toastMsg('captura cancelada (' + ((e && e.name) || 'erro') + ')');
+      toastMsg('capture cancelled (' + ((e && e.name) || 'error') + ')');
       return false;
     });
   }
 
   function studioAbortArming() {
-    cancelCountdown(); /* abortar durante a contagem nao pode deixar o startRecorder disparar */
+    cancelCountdown(); /* aborting during the countdown must not let startRecorder fire */
     if (recState.stream) { recState.stream.getTracks().forEach(function (tr) { tr.stop(); }); recState.stream = null; }
     if (recState.state === 'arming') recState.state = 'idle';
     updateStudioUi();
   }
 
-  /* ---------- STUDIO: música (mixer WebAudio) ---------- */
+  /* ---------- STUDIO: music (WebAudio mixer) ---------- */
   var actx = null, musicGain = null, fadeGain = null, masterGain = null, recDest = null;
-  var MUSIC = { sel: { type: 'none', label: 'Nenhuma' }, route: 'buffer', buf: null, el: null, src: null, gainBase: 0.7, credit: '', pending: null };
+  var MUSIC = { sel: { type: 'none', label: 'None' }, route: 'buffer', buf: null, el: null, src: null, gainBase: 0.7, credit: '', pending: null };
   var SYNTH_LABELS = { pulse: 'Pulse (upbeat)', glass: 'Glass (corporate)', drift: 'Drift (lo-fi)' };
 
   function ensureCtx() {
@@ -844,12 +844,12 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     MUSIC.credit = ''; MUSIC.el = null; MUSIC.buf = null; MUSIC.route = 'buffer';
     var done = Promise.resolve();
     if (!sel || sel.type === 'none') {
-      MUSIC.sel = { type: 'none', label: 'Nenhuma' };
+      MUSIC.sel = { type: 'none', label: 'None' };
     } else if (sel.type === 'synth') {
       MUSIC.sel = { type: 'synth', id: sel.id, label: SYNTH_LABELS[sel.id] || sel.id };
       done = renderSynth(sel.id).then(function (b) { MUSIC.buf = b; });
     } else if (sel.type === 'file') {
-      MUSIC.sel = { type: 'file', label: sel.label || 'arquivo' };
+      MUSIC.sel = { type: 'file', label: sel.label || 'file' };
       MUSIC.buf = sel.buf;
     } else if (sel.type === 'api') {
       MUSIC.pending = pickApiTrack(sel.trk); /* Task 6 */
@@ -861,7 +861,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     return done;
   }
 
-  /* ---------- STUDIO: synths (render offline → buffer; determinístico) ---------- */
+  /* ---------- STUDIO: synths (offline render → buffer; deterministic) ---------- */
   var synthCache = {};
   var SYNTHS = {
     pulse: { bpm: 120, bars: 8, build: buildPulse },
@@ -871,7 +871,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   function renderSynth(id) {
     if (synthCache[id]) return Promise.resolve(synthCache[id]);
     var def = SYNTHS[id];
-    if (!def) return Promise.reject(new Error('synth desconhecido: ' + id));
+    if (!def) return Promise.reject(new Error('unknown synth: ' + id));
     var dur = def.bars * 4 * 60 / def.bpm;
     var oc = new OfflineAudioContext(2, Math.ceil(44100 * dur), 44100);
     def.build(oc, def);
@@ -969,7 +969,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     }
   }
 
-  /* ---------- STUDIO: Openverse (música CC por API) ---------- */
+  /* ---------- STUDIO: Openverse (CC music via API) ---------- */
   function openverseSearch(q) {
     var u = 'https://api.openverse.org/v1/audio/?q=' + encodeURIComponent(q) + '&category=music&page_size=10';
     return fetch(u, { headers: { 'Accept': 'application/json' } }).then(function (r) {
@@ -978,7 +978,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     }).then(function (j) {
       return (j.results || []).map(function (x) {
         return {
-          id: x.id, title: x.title || 'sem título', creator: x.creator || '',
+          id: x.id, title: x.title || 'untitled', creator: x.creator || '',
           license: String(x.license || '').toUpperCase(), licVer: x.license_version || '',
           url: x.url, dur: x.duration || 0
         };
@@ -987,7 +987,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
   function creditFor(trk) {
     var lic = trk.license === 'CC0' ? 'CC0' : 'CC ' + trk.license + (trk.licVer ? ' ' + trk.licVer : '');
-    return '"' + trk.title + '" — ' + (trk.creator || 'autor desconhecido') + ' (' + lic + '), via Openverse';
+    return '"' + trk.title + '" — ' + (trk.creator || 'unknown creator') + ' (' + lic + '), via Openverse';
   }
   function pickApiTrack(trk) {
     return fetch(trk.url, { mode: 'cors' }).then(function (r) {
@@ -1000,7 +1000,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       MUSIC.buf = buf; MUSIC.el = null; MUSIC.route = 'buffer';
       finishApiSel(trk);
     }).catch(function () {
-      /* CORS/decodificação falhou: toca via <audio>; gravação precisa do áudio da guia */
+      /* CORS/decoding failed: plays via <audio>; recording needs the tab's audio */
       MUSIC.buf = null; MUSIC.route = 'element';
       MUSIC.el = new Audio(); MUSIC.el.src = trk.url; MUSIC.el.loop = true;
       finishApiSel(trk);
@@ -1012,7 +1012,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     $('#mp-credit').textContent = MUSIC.credit;
     $('#mp-credit-row').style.display = '';
     $('#mp-note').textContent = MUSIC.route === 'element'
-      ? 'esta faixa não permite mixagem direta (CORS): ao gravar, marque "compartilhar áudio da guia" no picker.'
+      ? 'this track does not allow direct mixing (CORS): when recording, check "share tab audio" in the picker.'
       : '';
     updateStudioUi();
     if (playing) startMusicAt(t);
@@ -1026,7 +1026,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     return Promise.resolve();
   }
 
-  /* ---------- STUDIO: GIF (encoder próprio: paleta uniforme + dither + LZW) ---------- */
+  /* ---------- STUDIO: GIF (own encoder: uniform palette + dither + LZW) ---------- */
   var GIF_PAL = (function () {
     var p = [];
     for (var r = 0; r < 6; r++) for (var g = 0; g < 7; g++) for (var b = 0; b < 6; b++)
@@ -1063,7 +1063,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     }
     return out;
   }
-  /* LZW do GIF (ordem canônica do omggif: emite, clear em 4096, senão bump+insere) */
+  /* GIF LZW (omggif's canonical order: emit, clear at 4096, otherwise bump+insert) */
   function lzwEncode(pixels, minCode) {
     var CLEAR = 1 << minCode, EOI = CLEAR + 1, MAXMAX = 4096;
     var codeSize = minCode + 1, next = EOI + 1, dict = {};
@@ -1095,12 +1095,12 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     function str(s) { for (var i = 0; i < s.length; i++) out.push(s.charCodeAt(i)); }
     function u16(v) { out.push(v & 255, (v >> 8) & 255); }
     str('GIF89a'); u16(w); u16(h);
-    out.push(0xF7, 0, 0); /* GCT 256 cores */
+    out.push(0xF7, 0, 0); /* GCT 256 colors */
     for (var i = 0; i < 256; i++) { var c = GIF_PAL[i]; out.push(c[0], c[1], c[2]); }
     out.push(0x21, 0xFF, 0x0B); str('NETSCAPE2.0'); out.push(3, 1); u16(0); out.push(0); /* loop ∞ */
     frames.forEach(function (px) {
-      out.push(0x21, 0xF9, 4, 0); u16(delayCs); out.push(0, 0); /* GCE: delay em centissegundos */
-      out.push(0x2C); u16(0); u16(0); u16(w); u16(h); out.push(0); /* descriptor sem LCT */
+      out.push(0x21, 0xF9, 4, 0); u16(delayCs); out.push(0, 0); /* GCE: delay in centiseconds */
+      out.push(0x2C); u16(0); u16(0); u16(w); u16(h); out.push(0); /* descriptor without LCT */
       out.push(8); /* min LZW code size */
       var data = lzwEncode(px, 8);
       for (var p = 0; p < data.length; p += 255) {
@@ -1119,7 +1119,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
   function makeGif(opts) {
     var tk = recState.lastTake;
-    if (!tk) return Promise.reject(new Error('sem take gravado'));
+    if (!tk) return Promise.reject(new Error('no take recorded'));
     var width = opts.width || 640, fps = opts.fps || 12;
     return new Promise(function (resolve, reject) {
       var v = document.createElement('video');
@@ -1127,16 +1127,16 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       var url = URL.createObjectURL(tk.blob);
       v.src = url;
       var settled = false;
-      /* revoga o objectURL em TODO desfecho (sucesso ou falha) */
+      /* revokes the objectURL on EVERY outcome (success or failure) */
       function finish(err, blob) {
         if (settled) return;
         settled = true;
         URL.revokeObjectURL(url);
         if (err) reject(err); else resolve(blob);
       }
-      v.addEventListener('error', function () { finish(new Error('não consegui decodificar o take')); });
+      v.addEventListener('error', function () { finish(new Error('could not decode the take')); });
       v.addEventListener('loadedmetadata', function () {
-        /* WebM do MediaRecorder pode vir com duration=Infinity: seek grande corrige */
+        /* MediaRecorder's WebM may come with duration=Infinity: a large seek fixes it */
         var fix = isFinite(v.duration) ? Promise.resolve() : new Promise(function (res) {
           v.currentTime = 1e9;
           v.addEventListener('seeked', function on() { v.removeEventListener('seeked', on); res(); });
@@ -1151,7 +1151,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
           var cx = cv.getContext('2d', { willReadFrequently: true });
           var frames = [], times = [];
           for (var tt = from; tt < to; tt += 1 / fps) times.push(tt);
-          if (!times.length) { finish(new Error('janela vazia')); return; }
+          if (!times.length) { finish(new Error('empty window')); return; }
           var i = 0;
           (function step() {
             if (i >= times.length) {
@@ -1214,7 +1214,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       $('#mp-api').style.display = v === 'api' ? '' : 'none';
       if (v === 'none') setMusic({ type: 'none' });
       else if (v === 'pulse' || v === 'glass' || v === 'drift') setMusic({ type: 'synth', id: v });
-      /* 'file' e 'api' só selecionam ao carregar arquivo / clicar Usar */
+      /* 'file' and 'api' only select on loading the file / clicking Use */
     });
   });
   $('#mp-vol').addEventListener('input', function () {
@@ -1230,36 +1230,36 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     }).then(function (buf) {
       setMusic({ type: 'file', buf: buf, label: f.name });
     }).catch(function () {
-      $('#mp-note').textContent = 'não consegui decodificar esse arquivo de áudio.';
+      $('#mp-note').textContent = 'could not decode that audio file.';
     });
   });
 
   $('#mp-go').addEventListener('click', function () {
     var q = $('#mp-q').value.trim();
     if (!q) return;
-    $('#mp-list').textContent = 'buscando…';
+    $('#mp-list').textContent = 'searching…';
     openverseSearch(q).then(function (list) {
       $('#mp-list').innerHTML = '';
-      if (!list.length) { $('#mp-list').textContent = 'nada encontrado.'; return; }
+      if (!list.length) { $('#mp-list').textContent = 'nothing found.'; return; }
       list.forEach(function (trk) {
         var row = document.createElement('div');
         row.className = 'mp-tk';
         var label = document.createElement('span');
         label.textContent = trk.title + ' — ' + (trk.creator || '?') + ' [' + trk.license + ']';
         var use = document.createElement('button');
-        use.textContent = 'Usar';
+        use.textContent = 'Use';
         use.addEventListener('click', function () { $('#mp-list').querySelectorAll('button').forEach(function (b) { b.disabled = true; }); MUSIC.pending = setMusic({ type: 'api', trk: trk }); });
         row.appendChild(label); row.appendChild(use);
         $('#mp-list').appendChild(row);
       });
     }).catch(function (e) {
-      $('#mp-list').textContent = 'busca falhou (' + e.message + ') — offline ou preview com rede bloqueada.';
+      $('#mp-list').textContent = 'search failed (' + e.message + ') — offline or a preview with the network blocked.';
     });
   });
   $('#mp-copy').addEventListener('click', function () { copyText(MUSIC.credit); });
   if (STUDIO_ENV.iframe) {
     $('#mp-api-radio').disabled = true;
-    $('#mp-api-radio').parentElement.title = 'indisponível no preview (rede bloqueada pelo CSP do artifact)';
+    $('#mp-api-radio').parentElement.title = 'unavailable in the preview (network blocked by the artifact CSP)';
   }
 
   $('#tt-gif').addEventListener('click', function () {
@@ -1271,7 +1271,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   $('#gp-make').addEventListener('click', function () {
     var tk = recState.lastTake; if (!tk) return;
     $('#gp-make').disabled = true;
-    $('#gp-out').textContent = 'gerando…';
+    $('#gp-out').textContent = 'generating…';
     var to = parseFloat($('#gp-to').value);
     makeGif({
       width: parseInt($('#gp-w').value, 10),
@@ -1285,10 +1285,10 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
       $('#gp-out').textContent = fmtMB(blob.size) + (blob.size > 3145728
-        ? ' — acima de 3 MB: para o GIF oficial, use ffmpeg/gifski sobre o MP4 (qualidade superior).'
+        ? ' — above 3 MB: for the official GIF, use ffmpeg/gifski on the MP4 (superior quality).'
         : '');
     }).catch(function (e) {
-      $('#gp-out').textContent = 'falhou: ' + e.message;
+      $('#gp-out').textContent = 'failed: ' + e.message;
     }).then(function () {
       $('#gp-make').disabled = false;
       $('#gp-prog').classList.remove('on');
