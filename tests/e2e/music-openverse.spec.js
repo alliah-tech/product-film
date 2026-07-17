@@ -26,13 +26,28 @@ test('search lists tracks; CORS ok becomes the buffer route with copyable credit
   await page.fill('#mp-q', 'upbeat');
   await page.click('#mp-go');
   await expect(page.locator('#mp-list .mp-tk')).toHaveCount(2);
-  await page.locator('#mp-list .mp-tk button').first().click();
+  await page.locator('#mp-list .mp-use').first().click();
   await page.waitForFunction(() => window.__film.studio.music.sel.type === 'api' && window.__film.studio.music.route === 'buffer');
   const credit = await page.evaluate(() => window.__film.studio.music.credit);
   expect(credit).toContain('Neon Ride');
   expect(credit).toContain('CC BY 4.0');
   await page.click('#mp-copy');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Neon Ride');
+});
+
+test('"Use" marks the row (… → ✓ In use) and switching tracks re-marks without a new search', async ({ page }) => {
+  await page.goto(PAGE);
+  await page.click('#st-music');
+  await page.check('#mp-api-radio');
+  await page.fill('#mp-q', 'x');
+  await page.click('#mp-go');
+  await page.locator('#mp-list .mp-use').first().click();
+  await expect(page.locator('#mp-list .mp-use').first()).toHaveText('✓ In use');
+  await expect(page.locator('#mp-list .mp-tk').first()).toHaveClass(/sel/);
+  await page.locator('#mp-list .mp-use').nth(1).click();
+  await expect(page.locator('#mp-list .mp-use').nth(1)).toHaveText('✓ In use');
+  await expect(page.locator('#mp-list .mp-use').first()).toHaveText('Use');
+  await expect(page.locator('#mp-list .mp-tk').nth(1)).toHaveClass(/sel/);
 });
 
 test('blocked CORS becomes the element route and arms tab audio on REC', async ({ page }) => {
@@ -42,7 +57,7 @@ test('blocked CORS becomes the element route and arms tab audio on REC', async (
   await page.check('#mp-api-radio');
   await page.fill('#mp-q', 'x');
   await page.click('#mp-go');
-  await page.locator('#mp-list .mp-tk button').nth(1).click();
+  await page.locator('#mp-list .mp-use').nth(1).click();
   await page.waitForFunction(() => window.__film.studio.music.route === 'element');
   await expect(page.locator('#mp-note')).toContainText('share tab audio');
   await page.click('#mp-close');
@@ -66,7 +81,7 @@ test('REC right after "Use" still records with audio (api race)', async ({ page 
   await page.check('#mp-api-radio');
   await page.fill('#mp-q', 'x');
   await page.click('#mp-go');
-  await page.locator('#mp-list .mp-tk button').first().click();
+  await page.locator('#mp-list .mp-use').first().click();
   /* does NOT wait for the route to resolve */
   await page.click('#mp-close');
   await page.evaluate(() => window.__film.studio.rec('full'));
@@ -104,14 +119,14 @@ test('switching element-route track pauses the previous one (no double audio)', 
   await page.check('#mp-api-radio');
   await page.fill('#mp-q', 'x');
   await page.click('#mp-go');
-  await page.locator('#mp-list .mp-tk button').first().click();
+  await page.locator('#mp-list .mp-use').first().click();
   await page.waitForFunction(() => window.__film.studio.music.route === 'element' && window.__audios.length === 1);
   await page.click('#mp-close');
   await page.evaluate(() => window.__film.play());
   await page.waitForFunction(() => window.__audios[0] && window.__audios[0].paused === false, null, { timeout: 10000 });
   await page.click('#st-music');
   await page.click('#mp-go');
-  await page.locator('#mp-list .mp-tk button').nth(1).click();
+  await page.locator('#mp-list .mp-use').nth(1).click();
   await page.waitForFunction(() => window.__audios.length === 2);
   expect(await page.evaluate(() => window.__audios[0].paused)).toBe(true); /* pre-fix: keeps playing */
 });

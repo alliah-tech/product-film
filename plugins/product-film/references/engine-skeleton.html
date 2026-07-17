@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>PRODUCT — Product Film</title>
 <!-- ============================================================
   PRODUCT FILM — engine skeleton (self-playing, recordable)
@@ -100,16 +101,30 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 #countdown .num { font-family: var(--font-display); font-weight: 300; font-size: 240px; line-height: 1; color: var(--color-text); }
 #countdown .cd-sub { font-family: var(--font-mono); font-size: 14px; color: var(--color-text-dim); letter-spacing: .08em; }
 
-/* Start overlay (cut choice; never reappears after the loop) */
+/* Pause menu (stage click pauses; suppressed during a take) */
+#pause-menu { position: absolute; inset: 0; z-index: 96; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.45); }
+#pause-menu.on { display: flex; }
+#pause-menu .pm-box { display: flex; flex-direction: column; gap: 12px; min-width: 460px; padding: 30px 34px; background: rgba(10,10,24,.97); border: 1px solid var(--color-border-hover); border-radius: var(--radius-lg); }
+#pause-menu .pm-title { font-family: var(--font-display); font-weight: 700; font-size: 32px; margin-bottom: 6px; }
+.pmbtn { display: flex; align-items: center; gap: 12px; border: 1px solid var(--color-border-hover); background: var(--color-surface); color: var(--color-text); border-radius: var(--radius-md); padding: 15px 20px; font-family: var(--font-mono); font-size: 18px; cursor: pointer; text-align: left; transition: border-color .2s; }
+.pmbtn:hover { border-color: var(--color-accent); }
+#pause-menu .pm-hint { font-family: var(--font-mono); font-size: 13.5px; color: var(--color-text-dim); margin-top: 4px; }
+
+/* Start overlay (cut choice; never reappears after the loop).
+   Sized for 1920×1080 scaled DOWN in embeds — err on the large side. */
 #start { position: absolute; inset: 0; z-index: 100; background: var(--color-surface-code); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 34px; }
-#start .s-inner { display: flex; flex-direction: column; align-items: center; gap: 30px; }
-#start .s-cuts { display: flex; gap: 18px; }
-.cutbtn { display: flex; flex-direction: column; gap: 8px; width: 340px; padding: 24px 26px; background: var(--color-surface); border: 1px solid var(--color-border-hover); border-radius: var(--radius-lg); cursor: pointer; text-align: left; color: var(--color-text); transition: border-color .2s; }
+#start .s-inner { display: flex; flex-direction: column; align-items: center; gap: 40px; }
+#start .s-cuts { display: flex; gap: 24px; }
+.cutbtn { display: flex; flex-direction: column; gap: 10px; width: 480px; padding: 28px 32px; background: var(--color-surface); border: 1px solid var(--color-border-hover); border-radius: var(--radius-lg); cursor: pointer; text-align: left; color: var(--color-text); transition: border-color .2s; }
 .cutbtn:hover, .cutbtn:focus-visible { border-color: var(--color-accent); outline: none; }
-.cutbtn .cb-t { font-family: var(--font-display); font-weight: 700; font-size: 24px; }
-.cutbtn .cb-d { font-size: 14.5px; color: var(--color-text-muted); }
-#start .s-hints { display: flex; gap: 26px; font-family: var(--font-mono); font-size: 13.5px; color: var(--color-text-dim); }
-#start .s-hints b { color: var(--color-text-muted); font-weight: 400; border: 1px solid var(--color-border-hover); border-radius: 5px; padding: 2px 8px; margin-right: 6px; }
+.cutbtn .cb-t { font-family: var(--font-display); font-weight: 700; font-size: 34px; }
+.cutbtn .cb-d { font-size: 19px; color: var(--color-text-muted); line-height: 1.45; }
+.cutbtn .cb-actions { display: flex; gap: 12px; margin-top: 14px; }
+.cbbtn { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--color-border-hover); background: transparent; color: var(--color-text); border-radius: var(--radius-full); padding: 11px 22px; font-family: var(--font-mono); font-size: 16px; cursor: pointer; transition: border-color .2s; }
+.cbbtn:hover { border-color: var(--color-accent); }
+.cbbtn.cb-play { border-color: var(--color-accent); }
+#start .s-hints { display: flex; gap: 30px; font-family: var(--font-mono); font-size: 16.5px; color: var(--color-text-dim); }
+#start .s-hints b { color: var(--color-text-muted); font-weight: 400; border: 1px solid var(--color-border-hover); border-radius: 6px; padding: 3px 10px; margin-right: 7px; }
 
 /* Controls outside the frame (auto-hidden; disappear IMMEDIATELY on play) */
 #controls { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 200; display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(10,10,24,.92); border: 1px solid var(--color-border-hover); border-radius: var(--radius-full); font-family: var(--font-mono); font-size: 13px; color: var(--color-text-muted); opacity: 0; transition: opacity .25s; pointer-events: none; }
@@ -129,11 +144,13 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 #fs-hint button { border: 1px solid var(--color-border-hover); background: transparent; color: var(--color-text); border-radius: var(--radius-full); padding: 6px 13px; font-size: 12.5px; cursor: pointer; }
 
 /* ============ STUDIO (ready furniture — normally don't touch) ============ */
-.s-studio { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 13px; }
-.stbtn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--color-border-hover); background: var(--color-surface); color: var(--color-text); border-radius: var(--radius-full); padding: 8px 16px; font-family: var(--font-mono); font-size: 13px; cursor: pointer; transition: border-color .2s; }
+.s-studio { display: flex; align-items: center; gap: 14px; font-family: var(--font-mono); font-size: 16px; }
+.stbtn { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--color-border-hover); background: var(--color-surface); color: var(--color-text); border-radius: var(--radius-full); padding: 12px 24px; font-family: var(--font-mono); font-size: 16px; cursor: pointer; transition: border-color .2s; }
 .stbtn:hover { border-color: var(--color-accent); }
-.stbtn .rec-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-accent); }
-#st-nohint { max-width: 560px; color: var(--color-text-dim); font-family: var(--font-body); font-size: 13px; line-height: 1.5; }
+#st-music { border-color: var(--color-accent); } /* the audio entry point must be evident */
+.rec-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--color-accent); }
+#st-nohint { max-width: 760px; color: var(--color-text-dim); font-family: var(--font-body); font-size: 15.5px; line-height: 1.55; text-align: center; }
+#st-nohint b { color: var(--color-text); }
 #st-toast { position: fixed; right: 18px; bottom: 18px; z-index: 210; display: none; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(10,10,24,.95); border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: 12.5px; color: var(--color-text); }
 #st-toast.on { display: flex; }
 #st-toast button { border: 1px solid var(--color-border-hover); background: transparent; color: var(--color-text); border-radius: var(--radius-full); padding: 4px 10px; font-size: 12px; cursor: pointer; }
@@ -142,10 +159,13 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 #music-panel.on, #gif-panel.on { display: flex; }
 .mp-title, .gp-title { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
 .mp-row { display: flex; align-items: center; gap: 8px; }
+.mp-row .mp-prev { margin-left: auto; min-width: 38px; }
 .mp-search { display: flex; gap: 8px; }
 .mp-search input, #music-panel input[type=text] { flex: 1; background: var(--color-surface-code); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); padding: 6px 10px; }
 #mp-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow: auto; }
 #mp-list .mp-tk { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 13px; }
+#mp-list .mp-tk span { flex: 1; }
+#mp-list .mp-tk.sel { border-color: var(--color-accent); }
 #music-panel button, #gif-panel button, #gif-panel select { border: 1px solid var(--color-border-hover); background: var(--color-surface); color: var(--color-text); border-radius: var(--radius-md); padding: 5px 10px; font-size: 12.5px; cursor: pointer; }
 .mp-vol { display: flex; align-items: center; gap: 10px; }
 .mp-note, .gp-dim { color: var(--color-text-muted); font-size: 12.5px; }
@@ -184,20 +204,44 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     <div id="progress"><i id="prog-fill"></i></div>
     <div id="countdown"><div class="num">4</div><div class="cd-sub">SPACE skips &middot; ESC cancels</div></div>
 
+    <div id="pause-menu">
+      <div class="pm-box">
+        <div class="pm-title">Paused</div>
+        <button class="pmbtn" id="pm-resume">&#9654;&ensp;Resume</button>
+        <button class="pmbtn" id="pm-restart">&#8634;&ensp;Restart</button>
+        <button class="pmbtn" id="pm-rec"><span class="rec-dot"></span>Record take</button>
+        <button class="pmbtn" id="pm-music">&#9834;&ensp;Theme music&hellip;</button>
+        <button class="pmbtn" id="pm-home">&#8962;&ensp;Start screen</button>
+        <div class="pm-hint">Click the stage to resume &middot; Esc closes</div>
+      </div>
+    </div>
+
     <div id="start">
       <div class="s-inner">
-        <div style="font-family:var(--font-display);font-weight:700;font-size:56px">Product<span style="color:var(--color-accent)">Name</span></div>
+        <div style="font-family:var(--font-display);font-weight:700;font-size:92px">Product<span style="color:var(--color-accent)">Name</span></div>
         <div class="s-cuts">
-          <button class="cutbtn" data-cut="full"><span class="cb-t">Full cut &#9656;</span><span class="cb-d">Full cut for YouTube/landing.</span></button>
-          <button class="cutbtn" data-cut="ph"><span class="cb-t">Short loop &#9656;</span><span class="cb-d">Muted ~20s loop for Product Hunt.</span></button>
+          <div class="cutbtn" data-cut="full">
+            <span class="cb-t">Full cut</span>
+            <span class="cb-d">Full cut with captions &mdash; YouTube / landing.</span>
+            <span class="cb-actions">
+              <button class="cbbtn cb-play" data-play="full">&#9654; Watch</button>
+              <button class="cbbtn cb-rec" data-rec="full"><span class="rec-dot"></span>Record</button>
+            </span>
+          </div>
+          <div class="cutbtn" data-cut="ph">
+            <span class="cb-t">Short loop</span>
+            <span class="cb-d">~20s loop &mdash; Product Hunt / previews.</span>
+            <span class="cb-actions">
+              <button class="cbbtn cb-play" data-play="ph">&#9654; Watch</button>
+              <button class="cbbtn cb-rec" data-rec="ph"><span class="rec-dot"></span>Record</button>
+            </span>
+          </div>
         </div>
-        <div class="s-hints"><span><b>F</b>fullscreen</span><span><b>Space</b>play/pause</span><span><b>R</b>restart</span><span><b>&larr;&nbsp;&rarr;</b>&plusmn;2s</span><span><b>Esc</b>pause</span></div>
         <div class="s-studio" id="st-row">
-          <button class="stbtn" id="st-rec"><span class="rec-dot"></span>Record take</button>
-          <button class="stbtn" id="st-cutsel">FULL</button>
-          <button class="stbtn" id="st-music">&#9834; <span id="st-music-name">None</span></button>
-          <span id="st-nohint" style="display:none">In-page recording unavailable in this preview &mdash; download the HTML and open it locally in Chrome. The theme music is still available.</span>
+          <button class="stbtn" id="st-music" title="Choose and audition the theme music">&#9834; Theme music: <span id="st-music-name">None</span></button>
         </div>
+        <span id="st-nohint" style="display:none">Recording (<b>MP4/GIF</b>) needs this HTML opened as a local file in Chrome &mdash; this embedded preview can only watch. The theme music works here too.</span>
+        <div class="s-hints"><span><b>F</b>fullscreen</span><span><b>Space</b>play/pause</span><span><b>R</b>restart</span><span><b>&larr;&nbsp;&rarr;</b>&plusmn;2s</span><span><b>Esc</b>pause</span></div>
       </div>
     </div>
   </div>
@@ -214,18 +258,19 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   <div id="st-toast"><span id="st-toast-msg"></span><button id="tt-dl">Download again</button><button id="tt-gif">Make GIF</button><button id="tt-rerec">Re-record</button><button id="tt-x">&times;</button></div>
 
   <div id="music-panel">
-    <div class="mp-title">Theme music <span class="mp-note">(full cut &middot; PH is muted by convention)</span></div>
+    <div class="mp-title">Theme music <span class="mp-note">(plays on both cuts &middot; &#9654; auditions)</span></div>
     <label class="mp-row"><input type="radio" name="mp" value="none" checked> None</label>
-    <label class="mp-row"><input type="radio" name="mp" value="pulse"> Pulse (upbeat)</label>
-    <label class="mp-row"><input type="radio" name="mp" value="glass"> Glass (corporate)</label>
-    <label class="mp-row"><input type="radio" name="mp" value="drift"> Drift (lo-fi)</label>
-    <label class="mp-row"><input type="radio" name="mp" value="file"> Local file&hellip; <input type="file" id="mp-file" accept="audio/*"></label>
+    <label class="mp-row"><input type="radio" name="mp" value="pulse"> Pulse (upbeat) <button class="mp-prev" data-prev="pulse" title="audition">&#9654;</button></label>
+    <label class="mp-row"><input type="radio" name="mp" value="glass"> Glass (corporate) <button class="mp-prev" data-prev="glass" title="audition">&#9654;</button></label>
+    <label class="mp-row"><input type="radio" name="mp" value="drift"> Drift (lo-fi) <button class="mp-prev" data-prev="drift" title="audition">&#9654;</button></label>
+    <label class="mp-row"><input type="radio" name="mp" value="file"> Local file&hellip; <input type="file" id="mp-file" accept="audio/*"> <button class="mp-prev" data-prev="file" title="audition">&#9654;</button></label>
     <label class="mp-row"><input type="radio" name="mp" value="api" id="mp-api-radio"> Search (Openverse, CC)</label>
     <div id="mp-api" style="display:none">
       <div class="mp-search"><input id="mp-q" type="text" placeholder="e.g.: upbeat electronic"><button id="mp-go">Search</button></div>
       <div id="mp-list"></div>
       <div class="mp-row" id="mp-credit-row" style="display:none"><span class="mp-note" id="mp-credit"></span><button id="mp-copy">copy credit</button></div>
     </div>
+    <div class="mp-note">Tip: the Product Hunt gallery autoplays muted &mdash; for a PH upload, record the short loop with music on &ldquo;None&rdquo;.</div>
     <div class="mp-vol"><span class="mp-note">vol</span><input id="mp-vol" type="range" min="0" max="100" value="70"></div>
     <div class="mp-note" id="mp-note"></div>
     <div class="mp-row"><button id="mp-close">close</button></div>
@@ -501,6 +546,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
   function play() {
     if (playing) return;
+    hidePauseMenu();
     playing = true; lastTs = null;
     $('#c-play').innerHTML = '&#10074;&#10074;';
     app.classList.add('playing');            /* the OS cursor disappears */
@@ -523,6 +569,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   var counting = false, cdTimer = null, cdDone = null;
   function startCountdown(done) {
     cancelCountdown();
+    hidePauseMenu();
     counting = true;
     cdDone = done;
     var k = 4;
@@ -544,7 +591,10 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   document.querySelectorAll('.cutbtn').forEach(function (b) {
     b.addEventListener('click', function () { begin(b.getAttribute('data-cut')); });
   });
-  $('#c-play').addEventListener('click', function () { playing ? pause() : play(); });
+  document.querySelectorAll('[data-play]').forEach(function (b) {
+    b.addEventListener('click', function (e) { e.stopPropagation(); begin(b.getAttribute('data-play')); });
+  });
+  $('#c-play').addEventListener('click', function () { playing ? userPause() : play(); });
   $('#c-restart').addEventListener('click', restart);
   $('#c-cut').addEventListener('click', function () { pause(); setCut(cutName === 'full' ? 'ph' : 'full'); seek(0); startCountdown(play); });
   $('#c-full').addEventListener('click', function () { toggleFs(); });
@@ -561,18 +611,20 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   $('#fs-dismiss').addEventListener('click', function () { fsHint.classList.remove('on'); });
 
   document.addEventListener('keydown', function (e) {
+    var tg = e.target;
+    if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT' || tg.isContentEditable)) return; /* typing in a field ≠ shortcuts */
     if (counting) {
       if (e.key === ' ') { e.preventDefault(); finishCountdown(cdDone || play); }
       else if (e.key === 'Escape') { cancelCountdown(); studioOnCountdownCancel(); pokeControls(); }
       else if (e.key === 'f' || e.key === 'F') toggleFs();
       return;
     }
-    if (e.key === ' ' || e.key === 'k') { e.preventDefault(); if (!started) begin('full'); else playing ? pause() : play(); }
+    if (e.key === ' ' || e.key === 'k') { e.preventDefault(); if (!started) begin('full'); else playing ? userPause() : play(); }
     else if (e.key === 'r' || e.key === 'R') { if (started) restart(); }
     else if (e.key === 'ArrowRight') seek(t + 2);
     else if (e.key === 'ArrowLeft') seek(t - 2);
     else if (e.key === 'f' || e.key === 'F') toggleFs();
-    else if (e.key === 'Escape') { if (playing) pause(); }
+    else if (e.key === 'Escape') { if (playing) userPause(); else hidePauseMenu(); }
   });
 
   /* During play, only the mouse on the BOTTOM EDGE reveals the controls (clean take). */
@@ -588,6 +640,33 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     if (performance.now() < suppressUntil) return;
     if (playing && e.clientY < window.innerHeight - 72) return;
     pokeControls();
+  });
+
+  /* Clicking the stage pauses with a menu / resumes (the film's cursor is staged;
+     real clicks during play belong to the viewer). Menu never shows mid-take. */
+  var pauseMenu = $('#pause-menu');
+  function hidePauseMenu() { pauseMenu.classList.remove('on'); }
+  function userPause() {
+    if (!playing) return;
+    pause();
+    if (started && !counting && !studioBusy()) pauseMenu.classList.add('on');
+  }
+  function goHome() {
+    cancelCountdown();
+    pause();
+    hidePauseMenu();
+    seek(0);
+    started = false;
+    controls.classList.remove('show');
+    clearTimeout(hideTimer);
+    startOv.style.display = '';
+    studioOnHome();
+  }
+  stage.addEventListener('click', function (e) {
+    if (!started || counting) return;
+    if (e.target.closest('.pm-box')) return;
+    if (playing) userPause();
+    else { hidePauseMenu(); play(); }
   });
 
   /* ---------- boot ---------- */
@@ -624,7 +703,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   };
 
   /* Hooks called by the engine (bodies filled in the following sections). */
-  function studioOnPlay() { startMusicAt(t); }
+  function studioOnPlay() { stopPreview(); startMusicAt(t); }
   function studioOnPause() {
     if (recState.state === 'recording') { stopTake('partial'); return; }
     stopMusic();
@@ -632,8 +711,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   function studioOnSeek(nt) { if (playing) startMusicAt(nt); }
   function studioOnApply(tt) {
     if (!fadeGain || !CUT) return;
-    /* fade-in 0.5s and fade-out 1.5s of the full cut, as a function of t */
-    fadeGain.gain.value = (cutName === 'full') ? Math.min(win(tt, 0, 0.5), 1 - win(tt, CUT.dur - 1.5, CUT.dur)) : 1;
+    /* fade-in 0.5s and fade-out 1.5s, as a function of t (both cuts) */
+    fadeGain.gain.value = Math.min(win(tt, 0, 0.5), 1 - win(tt, CUT.dur - 1.5, CUT.dur));
   }
   function studioOnWrap() {
     if (recState.state !== 'recording') return false;
@@ -641,6 +720,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     return true;
   }
   function studioOnCountdownCancel() { studioAbortArming(); }
+  function studioBusy() { return recState.state !== 'idle'; }
+  function studioOnHome() { stopPreview(); stopMusic(); updateStudioUi(); }
 
   /* ---------- STUDIO: capture ---------- */
   function mimeCandidates(withAudio) {
@@ -665,7 +746,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   function fmtMB(n) { return (n / 1048576).toFixed(2) + ' MB'; }
 
   function wantsTabAudio() {
-    return cutName === 'full' && MUSIC.sel.type === 'api' && MUSIC.route === 'element';
+    return musicActive() && MUSIC.route === 'element';
   }
   function prepMusic() {
     var wait = MUSIC.pending || Promise.resolve();
@@ -772,6 +853,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 
   function studioRec(cut) {
     if (!canRec() || recState.state !== 'idle') return Promise.resolve(false);
+    stopPreview();
     if (cut) setCut(cut);
     recState.state = 'arming';
     updateStudioUi();
@@ -813,7 +895,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     musicGain.connect(fadeGain); fadeGain.connect(masterGain);
     masterGain.connect(actx.destination); masterGain.connect(recDest);
   }
-  function musicActive() { return cutName === 'full' && MUSIC.sel.type !== 'none'; }
+  /* Both cuts can carry music — PH guidance is a note in the panel, not a gate. */
+  function musicActive() { return MUSIC.sel.type !== 'none'; }
 
   function startMusicAt(offset) {
     stopMusic();
@@ -841,6 +924,10 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 
   function setMusic(sel) {
     stopMusic();
+    stopPreview();
+    PICK_SEQ++; /* invalidates any in-flight Openverse pick (last click wins) */
+    $('#mp-credit-row').style.display = 'none';
+    paintUseState(null, false);
     MUSIC.credit = ''; MUSIC.el = null; MUSIC.buf = null; MUSIC.route = 'buffer';
     var done = Promise.resolve();
     if (!sel || sel.type === 'none') {
@@ -989,7 +1076,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     var lic = trk.license === 'CC0' ? 'CC0' : 'CC ' + trk.license + (trk.licVer ? ' ' + trk.licVer : '');
     return '"' + trk.title + '" — ' + (trk.creator || 'unknown creator') + ' (' + lic + '), via Openverse';
   }
+  var PICK_SEQ = 0; /* selection token: a newer pick (or setMusic) voids in-flight ones */
   function pickApiTrack(trk) {
+    var seq = ++PICK_SEQ;
     return fetch(trk.url, { mode: 'cors' }).then(function (r) {
       if (!r.ok) throw new Error('http ' + r.status);
       return r.arrayBuffer();
@@ -997,9 +1086,11 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       ensureCtx();
       return actx.decodeAudioData(ab);
     }).then(function (buf) {
+      if (seq !== PICK_SEQ) return;
       MUSIC.buf = buf; MUSIC.el = null; MUSIC.route = 'buffer';
       finishApiSel(trk);
     }).catch(function () {
+      if (seq !== PICK_SEQ) return;
       /* CORS/decoding failed: plays via <audio>; recording needs the tab's audio */
       MUSIC.buf = null; MUSIC.route = 'element';
       MUSIC.el = new Audio(); MUSIC.el.src = trk.url; MUSIC.el.loop = true;
@@ -1009,6 +1100,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   function finishApiSel(trk) {
     MUSIC.sel = { type: 'api', label: trk.title };
     MUSIC.credit = creditFor(trk);
+    paintUseState(trk.id, false);
     $('#mp-credit').textContent = MUSIC.credit;
     $('#mp-credit-row').style.display = '';
     $('#mp-note').textContent = MUSIC.route === 'element'
@@ -1173,30 +1265,110 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     });
   }
 
-  window.__film = { seek: seek, play: play, pause: pause, restart: restart, fs: toggleFs, setCut: function (n) { setCut(n); seek(0); }, get t() { return t; } };
+  window.__film = { seek: seek, play: play, pause: pause, restart: restart, home: goHome, fs: toggleFs, setCut: function (n) { setCut(n); seek(0); }, get t() { return t; } };
+
+  /* ---------- STUDIO: audition (panel previews; never wired into recDest,
+     so a preview can't leak into a take) ---------- */
+  var PREVIEW = { id: null, src: null, el: null, gain: null, loading: false };
+  /* Button glyphs: ▶ idle · … loading (synth render / network buffering) · ■ playing */
+  function updatePreviewUi() {
+    document.querySelectorAll('[data-prev]').forEach(function (b) {
+      var cur = PREVIEW.id === b.getAttribute('data-prev');
+      b.innerHTML = !cur ? '&#9654;' : (PREVIEW.loading ? '&#8230;' : '&#9632;');
+    });
+  }
+  function stopPreview() {
+    if (PREVIEW.src) { try { PREVIEW.src.stop(); } catch (e) {} PREVIEW.src = null; }
+    if (PREVIEW.el) { try { PREVIEW.el.pause(); } catch (e) {} PREVIEW.el = null; }
+    PREVIEW.id = null;
+    PREVIEW.loading = false;
+    updatePreviewUi();
+  }
+  function previewBuffer(id, bufPromise) {
+    stopPreview();
+    PREVIEW.id = id;
+    PREVIEW.loading = true;
+    updatePreviewUi();
+    bufPromise.then(function (buf) {
+      if (PREVIEW.id !== id || !buf) return;
+      ensureCtx();
+      if (actx.state === 'suspended') actx.resume();
+      if (!PREVIEW.gain) { PREVIEW.gain = actx.createGain(); PREVIEW.gain.connect(actx.destination); }
+      PREVIEW.gain.gain.value = MUSIC.gainBase;
+      var src = actx.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      src.connect(PREVIEW.gain);
+      src.start(0);
+      PREVIEW.src = src;
+      PREVIEW.loading = false;
+      updatePreviewUi();
+    }).catch(function () { if (PREVIEW.id === id) stopPreview(); });
+  }
+  function previewUrl(id, url) {
+    if (PREVIEW.id === id) { stopPreview(); return; }
+    stopPreview();
+    PREVIEW.id = id;
+    PREVIEW.loading = true;
+    updatePreviewUi();
+    var el = new Audio();
+    el.src = url; el.loop = true; el.volume = MUSIC.gainBase;
+    PREVIEW.el = el;
+    /* play() resolves when the audio actually starts — that's when … becomes ■ */
+    el.play().then(function () {
+      if (PREVIEW.id === id) { PREVIEW.loading = false; updatePreviewUi(); }
+    }).catch(function () { if (PREVIEW.id === id) stopPreview(); });
+  }
+  /* Selection state on the Openverse list: … while resolving, ✓ + accent border when in use. */
+  function paintUseState(id, pending) {
+    document.querySelectorAll('#mp-list .mp-tk').forEach(function (row) {
+      var isRow = id != null && row.getAttribute('data-trk') === String(id);
+      row.classList.toggle('sel', isRow && !pending);
+      var u = row.querySelector('.mp-use');
+      if (!u) return;
+      u.disabled = isRow && pending;
+      u.innerHTML = isRow ? (pending ? '&#8230;' : '&#10003; In use') : 'Use';
+    });
+  }
+  document.querySelectorAll('.mp-prev').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation(); /* don't toggle the radio under the label */
+      var id = b.getAttribute('data-prev');
+      if (PREVIEW.id === id) { stopPreview(); return; }
+      if (id === 'file') {
+        if (MUSIC.sel.type === 'file' && MUSIC.buf) previewBuffer('file', Promise.resolve(MUSIC.buf));
+        else $('#mp-note').textContent = 'load a file first (it is selected as soon as it loads).';
+        return;
+      }
+      previewBuffer(id, renderSynth(id));
+    });
+  });
 
   /* ---------- STUDIO: UI + boot ---------- */
   function updateStudioUi() {
     var rec = canRec();
-    $('#st-rec').style.display = rec ? '' : 'none';
-    $('#st-cutsel').style.display = rec ? '' : 'none';
+    document.querySelectorAll('.cb-rec').forEach(function (b) {
+      b.style.display = rec ? '' : 'none';
+      b.disabled = recState.state !== 'idle';
+    });
     $('#c-rec').style.display = rec ? '' : 'none';
-    $('#st-nohint').style.display = rec ? 'none' : 'inline';
-    $('#st-cutsel').textContent = cutName.toUpperCase();
-    $('#st-rec').disabled = recState.state !== 'idle';
+    $('#pm-rec').style.display = rec ? '' : 'none';
+    $('#st-nohint').style.display = rec ? 'none' : '';
     $('#c-rec').textContent = recState.state === 'recording' ? '■ STOP'
       : recState.state === 'arming' ? '…' : '● REC';
     $('#st-music-name').textContent = MUSIC.sel.label;
   }
-  $('#st-cutsel').addEventListener('click', function () {
-    setCut(cutName === 'full' ? 'ph' : 'full');
-    updateStudioUi();
+  document.querySelectorAll('[data-rec]').forEach(function (b) {
+    b.addEventListener('click', function (e) { e.stopPropagation(); studioRec(b.getAttribute('data-rec')); });
   });
+  $('#pm-resume').addEventListener('click', function () { play(); });
+  $('#pm-restart').addEventListener('click', restart);
+  $('#pm-rec').addEventListener('click', function () { hidePauseMenu(); studioRec(cutName); });
+  $('#pm-music').addEventListener('click', function () { $('#music-panel').classList.add('on'); });
+  $('#pm-home').addEventListener('click', goHome);
   $('#tt-x').addEventListener('click', function () { $('#st-toast').classList.remove('on'); });
-  $('#mp-close').addEventListener('click', function () { $('#music-panel').classList.remove('on'); });
+  $('#mp-close').addEventListener('click', function () { stopPreview(); $('#music-panel').classList.remove('on'); });
   $('#gp-close').addEventListener('click', function () { $('#gif-panel').classList.remove('on'); });
   $('#st-music').addEventListener('click', function () { $('#music-panel').classList.add('on'); });
-  $('#st-rec').addEventListener('click', function () { studioRec(cutName); });
   $('#c-rec').addEventListener('click', function () {
     if (recState.state === 'recording') stopTake('partial');
     else studioRec(cutName);
@@ -1220,6 +1392,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   $('#mp-vol').addEventListener('input', function () {
     MUSIC.gainBase = $('#mp-vol').value / 100;
     if (musicGain) musicGain.gain.value = MUSIC.gainBase;
+    if (PREVIEW.gain) PREVIEW.gain.gain.value = MUSIC.gainBase;
+    if (PREVIEW.el) PREVIEW.el.volume = MUSIC.gainBase;
   });
   $('#mp-file').addEventListener('change', function () {
     var f = $('#mp-file').files[0];
@@ -1234,6 +1408,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     });
   });
 
+  $('#mp-q').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('#mp-go').click(); });
   $('#mp-go').addEventListener('click', function () {
     var q = $('#mp-q').value.trim();
     if (!q) return;
@@ -1244,12 +1419,22 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       list.forEach(function (trk) {
         var row = document.createElement('div');
         row.className = 'mp-tk';
+        row.setAttribute('data-trk', trk.id);
         var label = document.createElement('span');
         label.textContent = trk.title + ' — ' + (trk.creator || '?') + ' [' + trk.license + ']';
+        var prev = document.createElement('button');
+        prev.setAttribute('data-prev', 'ov-' + trk.id);
+        prev.title = 'audition';
+        prev.innerHTML = '&#9654;';
+        prev.addEventListener('click', function () { previewUrl('ov-' + trk.id, trk.url); });
         var use = document.createElement('button');
+        use.className = 'mp-use';
         use.textContent = 'Use';
-        use.addEventListener('click', function () { $('#mp-list').querySelectorAll('button').forEach(function (b) { b.disabled = true; }); MUSIC.pending = setMusic({ type: 'api', trk: trk }); });
-        row.appendChild(label); row.appendChild(use);
+        use.addEventListener('click', function () {
+          MUSIC.pending = setMusic({ type: 'api', trk: trk });
+          paintUseState(trk.id, true); /* … now; ✓ when the track resolves */
+        });
+        row.appendChild(label); row.appendChild(prev); row.appendChild(use);
         $('#mp-list').appendChild(row);
       });
     }).catch(function (e) {

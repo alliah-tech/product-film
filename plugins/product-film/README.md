@@ -26,11 +26,13 @@ occasional escalation in hard choreography debugging; small touch-ups do fine wi
 
 ## Built-in studio (in-page recording)
 
-Every generated film ships with a studio: `● Record take` captures its own tab
-(`getDisplayMedia`), starts recording exactly at t=0 and stops at the end of the cut —
-the MP4 (Chrome/Edge/Safari; WebM on Firefox) downloads ready, no editor. Optional theme
-music mixed into the file (built-in synthesized tracks, local MP3 or CC search on
-Openverse with copyable credit; the PH cut stays muted). From the take you can
+Every generated film ships with a studio: each cut card has its own `▶ Watch` and
+`● Record` — recording captures its own tab (`getDisplayMedia`), starts exactly at t=0
+and stops at the end of the cut — the MP4 (Chrome/Edge/Safari; WebM on Firefox) downloads
+ready, no editor. Clicking the stage pauses with a menu (resume / restart / record /
+music / start screen). Optional theme music mixed into the file on either cut (built-in
+synthesized tracks with ▶ audition, local MP3 or CC search on Openverse with copyable
+credit; the panel reminds that Product Hunt autoplays muted). From the take you can
 derive a GIF (256 palette + dithering) right in the browser. In the artifact preview
 (iframe) recording is blocked by the browser — download the HTML and open it locally.
 
