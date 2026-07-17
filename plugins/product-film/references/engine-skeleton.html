@@ -850,6 +850,15 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     a.download = slugTitle() + '.html';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    /* Sandboxed hosts without allow-downloads (e.g. the claude.ai artifact frame)
+       swallow the download with only a console warning — nothing observable from
+       JS, and the sandbox flags aren't detectable either. This button only exists
+       in embeds, so always copy on the same gesture as the safety net. */
+    copyText(SOURCE_HTML).then(function () {
+      toastMsg('if no file landed, the HTML was copied — paste it into a file named film.html');
+    }, function () {
+      toastMsg('download and copy are blocked in this preview — grab the file from the repo');
+    });
   }
 
   function toastMsg(msg) {
@@ -1123,12 +1132,18 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     if (playing) startMusicAt(t);
   }
   function copyText(s) {
-    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s);
-    var ta = document.createElement('textarea');
-    ta.value = s; document.body.appendChild(ta); ta.select();
-    try { document.execCommand('copy'); } catch (e) {}
-    ta.remove();
-    return Promise.resolve();
+    /* clipboard.writeText is refused in sandboxed frames — fall back to
+       execCommand, which rides the same user gesture. */
+    function legacy() {
+      var ta = document.createElement('textarea');
+      ta.value = s; document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      ta.remove();
+      return ok ? Promise.resolve() : Promise.reject(new Error('copy blocked'));
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s).catch(legacy);
+    return legacy();
   }
 
   /* ---------- STUDIO: GIF (own encoder: uniform palette + dither + LZW) ---------- */
