@@ -28,6 +28,17 @@ test('in an iframe it degrades to a hint (no REC)', async ({ page }) => {
   expect(await frame.evaluate(() => window.__film.studio.env.canRec)).toBe(false);
 });
 
+test('sandboxed embed (claude.ai-like): ⬇ falls back to copying the HTML', async ({ page }) => {
+  await page.goto('/tests/fixtures/iframe-host-sandboxed.html');
+  const f = page.frameLocator('#host');
+  await expect(f.locator('#st-dl')).toBeVisible();
+  const dl = page.waitForEvent('download', { timeout: 1500 }).catch(() => null);
+  await f.locator('#st-dl').click();
+  await expect(f.locator('#st-toast')).toBeVisible();
+  await expect(f.locator('#st-toast-msg')).toContainText('copied');
+  expect(await dl).toBe(null); /* sandbox without allow-downloads swallows it */
+});
+
 test('in an iframe, ⬇ downloads the HTML itself (pristine self-copy)', async ({ page }) => {
   await page.goto('/tests/fixtures/iframe-host.html');
   const f = page.frameLocator('#host');
