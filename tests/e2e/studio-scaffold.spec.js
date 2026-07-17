@@ -36,6 +36,10 @@ test('sandboxed embed (claude.ai-like): ⬇ falls back to copying the HTML', asy
   await f.locator('#st-dl').click();
   await expect(f.locator('#st-toast')).toBeVisible();
   await expect(f.locator('#st-toast-msg')).toContainText('copied');
+  /* info toast: no take buttons, just the message and × */
+  await expect(f.locator('#tt-dl')).toBeHidden();
+  await expect(f.locator('#tt-gif')).toBeHidden();
+  await expect(f.locator('#tt-rerec')).toBeHidden();
   expect(await dl).toBe(null); /* sandbox without allow-downloads swallows it */
 });
 

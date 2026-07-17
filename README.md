@@ -99,7 +99,7 @@ plugins/product-film/
 
 ## Versioning
 
-Current version: **1.3.1**, pinned in both manifests (`plugin.json` and the plugin's entry in
+Current version: **1.3.2**, pinned in both manifests (`plugin.json` and the plugin's entry in
 `marketplace.json`). Being pinned, whoever already installed it only gets an update when you
 **increment** the number and push — a push without a bump changes nothing for whoever already has
 the plugin cached, because Claude Code sees the same version. (Omitting `version` would make
