@@ -855,17 +855,26 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
        JS, and the sandbox flags aren't detectable either. This button only exists
        in embeds, so always copy on the same gesture as the safety net. */
     copyText(SOURCE_HTML).then(function () {
-      toastMsg('if no file landed, the HTML was copied — paste it into a file named film.html');
+      toastInfo('if no file landed, the HTML was copied — paste it into a file named film.html');
     }, function () {
-      toastMsg('download and copy are blocked in this preview — grab the file from the repo');
+      toastInfo('download and copy are blocked in this preview — grab the file from the repo');
     });
   }
 
+  function toastButtons(show) {
+    ['#tt-dl', '#tt-gif', '#tt-rerec'].forEach(function (s) { $(s).style.display = show ? '' : 'none'; });
+  }
+  /* Take toast: message + take actions. Info toast: message + × only. */
   function toastMsg(msg) {
+    toastButtons(true);
     $('#st-toast-msg').textContent = msg;
     $('#tt-dl').disabled = !recState.lastTake;
     $('#tt-gif').disabled = !recState.lastTake;
     $('#st-toast').classList.add('on');
+  }
+  function toastInfo(msg) {
+    toastMsg(msg);
+    toastButtons(false);
   }
   function toastTake() {
     var tk = recState.lastTake; if (!tk) return;

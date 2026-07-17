@@ -80,4 +80,8 @@ test('the record button on the cut card records THAT cut; no menu mid-take', asy
   await page.waitForFunction(() => window.__film.studio.state === 'idle' && !!window.__film.studio.lastTake, null, { timeout: 10000 });
   await expect(page.locator('#pause-menu')).toBeHidden();
   expect(await page.evaluate(() => window.__film.studio.lastTake.cut)).toBe('ph');
+  /* take toast keeps its take actions (unlike info toasts) */
+  await expect(page.locator('#st-toast')).toBeVisible();
+  await expect(page.locator('#tt-rerec')).toBeVisible();
+  await expect(page.locator('#tt-gif')).toBeVisible();
 });
