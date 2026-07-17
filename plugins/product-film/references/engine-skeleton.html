@@ -239,8 +239,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
         </div>
         <div class="s-studio" id="st-row">
           <button class="stbtn" id="st-music" title="Choose and audition the theme music">&#9834; Theme music: <span id="st-music-name">None</span></button>
+          <button class="stbtn" id="st-dl" title="Download this HTML to record locally" style="display:none">&#8595; Download the HTML</button>
         </div>
-        <span id="st-nohint" style="display:none">Recording (<b>MP4/GIF</b>) needs this HTML opened as a local file in Chrome &mdash; this embedded preview can only watch. The theme music works here too.</span>
+        <span id="st-nohint" style="display:none">Recording (<b>MP4/GIF</b>) needs this HTML opened as a local file in Chrome &mdash; grab it with <b>&#8595; Download</b>; this embedded preview can only watch. The theme music works here too.</span>
         <div class="s-hints"><span><b>F</b>fullscreen</span><span><b>Space</b>play/pause</span><span><b>R</b>restart</span><span><b>&larr;&nbsp;&rarr;</b>&plusmn;2s</span><span><b>Esc</b>pause</span></div>
       </div>
     </div>
@@ -294,6 +295,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 <script>
 (function () {
   'use strict';
+  /* Pristine self-copy, captured before any boot mutation — powers the ⬇
+     download button shown in embeds (recording needs the local file). */
+  var SOURCE_HTML = '<!doctype html>\n' + document.documentElement.outerHTML;
   var $ = function (s) { return document.querySelector(s); };
 
   /* ---------- easing (same curves as the product's) ---------- */
@@ -839,6 +843,15 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
   }
 
+  function downloadSelf() {
+    var blob = new Blob([SOURCE_HTML], { type: 'text/html' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = slugTitle() + '.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  }
+
   function toastMsg(msg) {
     $('#st-toast-msg').textContent = msg;
     $('#tt-dl').disabled = !recState.lastTake;
@@ -1352,6 +1365,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     });
     $('#c-rec').style.display = rec ? '' : 'none';
     $('#pm-rec').style.display = rec ? '' : 'none';
+    $('#st-dl').style.display = rec ? 'none' : '';
     $('#st-nohint').style.display = rec ? 'none' : '';
     $('#c-rec').textContent = recState.state === 'recording' ? '■ STOP'
       : recState.state === 'arming' ? '…' : '● REC';
@@ -1369,6 +1383,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   $('#mp-close').addEventListener('click', function () { stopPreview(); $('#music-panel').classList.remove('on'); });
   $('#gp-close').addEventListener('click', function () { $('#gif-panel').classList.remove('on'); });
   $('#st-music').addEventListener('click', function () { $('#music-panel').classList.add('on'); });
+  $('#st-dl').addEventListener('click', downloadSelf);
   $('#c-rec').addEventListener('click', function () {
     if (recState.state === 'recording') stopTake('partial');
     else studioRec(cutName);

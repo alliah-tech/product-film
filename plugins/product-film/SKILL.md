@@ -35,7 +35,8 @@ The reference engine (`references/engine-skeleton.html`) already comes complete 
    navigate `?cut=X&t=BEAT&paused=1`, screenshot each beat, compare with the prod screenshots.
    Headless throttles rAF — timed playback there lies. One 1x run in a real browser at the end.
 6. **Deliver:** artifact (iframe preview **denies fullscreen AND recording** — the built-in studio
-   degrades into a hint with the ways out) + a copy in the repo (`docs/marketing/demo-film/`).
+   degrades into a hint + a `⬇ Download the HTML` button that hands over the file itself) + a copy
+   in the repo (`docs/marketing/demo-film/`).
    Recording: open the downloaded HTML in Chrome → `● Record` on the cut's card (also in the
    controls and the pause menu; the picker already suggests "this tab"; the countdown gives the
    slack; the file comes out cut at t=0→end — MP4 on Chrome/Edge/Safari, WebM on Firefox).
@@ -48,7 +49,7 @@ The reference engine (`references/engine-skeleton.html`) already comes complete 
 
 | Item | Behavior |
 |---|---|
-| Start screen | Big per-cut cards, each with its own `▶ Watch` and `● Record`; prominent `♪ Theme music` button. Sized for 1920×1080 scaled DOWN in embeds |
+| Start screen | Big per-cut cards, each with its own `▶ Watch` and `● Record`; prominent `♪ Theme music` button. In embeds, `● Record` gives way to `⬇ Download the HTML` (self-copy via blob). Sized for 1920×1080 scaled DOWN |
 | Play/restart | 4·3·2·1 countdown (Space skips, Esc cancels) |
 | During play | Controls disappear IMMEDIATELY + `cursor: none`; only the bottom edge reveals them |
 | Stage click | Playing → pause + menu (Resume / Restart / Record / Music / Start screen); paused → resume. Menu NEVER shows mid-take |
