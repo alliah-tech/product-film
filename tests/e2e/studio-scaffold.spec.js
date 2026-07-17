@@ -26,6 +26,10 @@ test('in an iframe it degrades to a hint (no REC)', async ({ page }) => {
   await expect(f.locator('.cb-rec[data-rec="ph"]')).toBeHidden();
   const frame = page.frame({ url: /engine-skeleton/ });
   expect(await frame.evaluate(() => window.__film.studio.env.canRec)).toBe(false);
+  /* the Openverse row is off (CSP blocks the network) and SAYS so inline */
+  await f.locator('#st-music').click();
+  await expect(f.locator('#mp-api-radio')).toBeDisabled();
+  await expect(f.locator('label.mp-off')).toContainText('unavailable in this preview');
 });
 
 test('sandboxed embed (claude.ai-like): ⬇ falls back to copying the HTML', async ({ page }) => {
