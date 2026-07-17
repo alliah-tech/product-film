@@ -33,6 +33,37 @@ Recarregue os plugins (`/reload-plugins`) ou reinicie o Claude Code.
 Pronto pelos dois caminhos: o skill fica disponível como **`/product-film`** — é só digitar no
 chat (aparece em *Slash Commands*).
 
+## Atualizar
+
+Quem já instalou **não** recebe versão nova sozinho: auto-update vem ligado só nos marketplaces
+oficiais da Anthropic; nos de terceiros (este) vem desligado. Para pegar a versão mais recente:
+
+```
+/plugin marketplace update product-film-marketplace
+/plugin update product-film@product-film-marketplace
+```
+
+Os dois comandos são necessários — o primeiro puxa o catálogo novo do git, o segundo compara a
+versão e baixa o plugin. Pela interface, `/plugin` → **Manage plugins** faz os dois no botão de
+update.
+
+Com uma sessão aberta, rode `/reload-plugins` (ou reinicie o Claude Code) depois de atualizar:
+mudanças no `SKILL.md` pegam na hora, mas as de `references/` só depois do reload.
+
+### Receber as próximas versões sozinho
+
+Ligue o auto-update **uma vez** e não precisa mais dos comandos acima: `/plugin` → aba
+**Marketplaces** → `product-film-marketplace` → **Enable auto-update**.
+
+Feito isso, todo bump de `version` chega sozinho. O Claude Code checa por atualizações depois
+que a sessão inicia, com atraso aleatório de até 10 minutos; a versão nova entra no próximo
+launch — ou na hora, se você aceitar o `/reload-plugins` que ele sugere. A sessão em andamento
+continua com a versão que carregou, de propósito.
+
+O autor **não** consegue ligar isso por você: não há campo no `marketplace.json` nem no
+`plugin.json` que controle auto-update. O toggle é seu (ou do admin da sua organização, via
+`extraKnownMarketplaces` com `"autoUpdate": true` nas *managed settings*).
+
 ## Usar
 
 No Claude Code, rode `/product-film` e descreva o produto/fluxo a demonstrar. O skill:
@@ -54,9 +85,14 @@ plugins/product-film/
 
 ## Versionamento
 
-`version` está fixado em `1.0.0` nos manifestos — os colegas só recebem atualização quando
-você **incrementa** o número e dá push. (Omitir `version` faria o Claude Code seguir o SHA do
-git e auto-atualizar a cada commit — útil durante desenvolvimento.)
+Versão atual: **1.1.0**, fixada nos dois manifestos (`plugin.json` e a entrada do plugin em
+`marketplace.json`). Estando fixada, quem já instalou só recebe atualização quando você
+**incrementa** o número e dá push — push sem bump não muda nada para quem já tem o plugin em
+cache, porque o Claude Code vê a mesma versão. (Omitir `version` faria o Claude Code seguir o
+SHA do git e tratar cada commit como versão nova — útil durante desenvolvimento.)
+
+O Claude Code resolve a versão pelo primeiro que existir: `version` do `plugin.json` → `version`
+da entrada no `marketplace.json` → SHA do commit. Mantenha os dois manifestos no mesmo número.
 
 ## Licença
 
