@@ -1,6 +1,6 @@
 'use strict';
-/* getDisplayMedia FALSO para testes: canvas animado → captureStream.
-   Grava opções em window.__gdmOpts; opts.audio true → adiciona faixa de áudio. */
+/* FAKE getDisplayMedia for tests: animated canvas → captureStream.
+   Records options in window.__gdmOpts; opts.audio true → adds an audio track. */
 function FAKE_GDM() {
   const cv = document.createElement('canvas');
   cv.width = 640; cv.height = 360;

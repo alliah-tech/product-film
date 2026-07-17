@@ -1,112 +1,115 @@
 # product-film — Claude Code plugin marketplace
 
-Marketplace de um plugin só: **`product-film`**, um skill do Claude Code que constrói um
-**protótipo auto-reproduzível que É o vídeo** de demonstração do seu produto — uma réplica
-fiel que se navega sozinha (cursor cenográfico, legendas cinéticas, zoom/spotlight, contagem
-4·3·2·1, loop). Você só **grava a tela**.
+A single-plugin marketplace: **`product-film`**, a Claude Code skill that builds a
+**self-playing prototype that IS the video** demoing your product — a faithful replica that
+navigates itself (staged cursor, kinetic captions, zoom/spotlight, 4·3·2·1 countdown, loop).
+All you do is **record the screen**.
 
-## Instalar
+## Install
 
-Repositório **público** — qualquer pessoa da comunidade pode instalar, sem precisar de acesso
-especial. Dois jeitos:
+**Public** repository — anyone in the community can install it, no special access needed. Two
+ways:
 
-### A) Pela linha de comando (CLI / terminal)
+### A) From the command line (CLI / terminal)
 
 ```
 /plugin marketplace add alliah-tech/product-film
 /plugin install product-film@product-film-marketplace
 ```
 
-Recarregue os plugins (`/reload-plugins`) ou reinicie o Claude Code.
+Reload the plugins (`/reload-plugins`) or restart Claude Code.
 
-> Alternativa por URL: `/plugin marketplace add https://github.com/alliah-tech/product-film.git`
+> URL alternative: `/plugin marketplace add https://github.com/alliah-tech/product-film.git`
 
-### B) Pela interface gráfica (extensão Claude Code no VS Code)
+### B) From the graphical interface (Claude Code extension in VS Code)
 
-1. Na barra de input, clique no botão **`/`** (ou digite `/`) → digite **`plugins`** → clique em
+1. In the input bar, click the **`/`** button (or type `/`) → type **`plugins`** → click
    **Manage plugins**.
-2. Vá na aba **Marketplaces** → no campo *"GitHub repo, URL, or path"* cole
-   **`alliah-tech/product-film`** (ou a URL `https://github.com/alliah-tech/product-film`) →
-   clique **Add**. Ele aparece como **`product-film-marketplace`**.
-3. Vá na aba **Plugins** → na seção **AVAILABLE**, ache **`product-film`** → clique **Install**.
+2. Go to the **Marketplaces** tab → in the *"GitHub repo, URL, or path"* field paste
+   **`alliah-tech/product-film`** (or the URL `https://github.com/alliah-tech/product-film`) →
+   click **Add**. It shows up as **`product-film-marketplace`**.
+3. Go to the **Plugins** tab → under **AVAILABLE**, find **`product-film`** → click **Install**.
 
-Pronto pelos dois caminhos: o skill fica disponível como **`/product-film`** — é só digitar no
-chat (aparece em *Slash Commands*).
+Either path gets you there: the skill becomes available as **`/product-film`** — just type it in
+the chat (it shows up under *Slash Commands*).
 
-## Atualizar
+## Update
 
-Quem já instalou **não** recebe versão nova sozinho: auto-update vem ligado só nos marketplaces
-oficiais da Anthropic; nos de terceiros (este) vem desligado. Para pegar a versão mais recente:
+Whoever already installed it does **not** get the new version automatically: auto-update is on
+only for Anthropic's official marketplaces; for third-party ones (this one) it comes off. To get
+the latest version:
 
 ```
 /plugin marketplace update product-film-marketplace
 /plugin update product-film@product-film-marketplace
 ```
 
-Os dois comandos são necessários — o primeiro puxa o catálogo novo do git, o segundo compara a
-versão e baixa o plugin. Pela interface, `/plugin` → **Manage plugins** faz os dois no botão de
-update.
+Both commands are needed — the first pulls the new catalog from git, the second compares the
+version and downloads the plugin. In the interface, `/plugin` → **Manage plugins** does both from
+the update button.
 
-Com uma sessão aberta, rode `/reload-plugins` (ou reinicie o Claude Code) depois de atualizar:
-mudanças no `SKILL.md` pegam na hora, mas as de `references/` só depois do reload.
+With a session open, run `/reload-plugins` (or restart Claude Code) after updating: changes to
+`SKILL.md` take effect immediately, but those in `references/` only after the reload.
 
-### Receber as próximas versões sozinho
+### Getting the next versions automatically
 
-Ligue o auto-update **uma vez** e não precisa mais dos comandos acima: `/plugin` → aba
-**Marketplaces** → `product-film-marketplace` → **Enable auto-update**.
+Turn auto-update on **once** and you no longer need the commands above: `/plugin` →
+**Marketplaces** tab → `product-film-marketplace` → **Enable auto-update**.
 
-Feito isso, todo bump de `version` chega sozinho. O Claude Code checa por atualizações depois
-que a sessão inicia, com atraso aleatório de até 10 minutos; a versão nova entra no próximo
-launch — ou na hora, se você aceitar o `/reload-plugins` que ele sugere. A sessão em andamento
-continua com a versão que carregou, de propósito.
+Once that's done, every `version` bump arrives on its own. Claude Code checks for updates after
+the session starts, with a random delay of up to 10 minutes; the new version comes in at the next
+launch — or right away, if you accept the `/reload-plugins` it suggests. The session in progress
+stays on the version it loaded, on purpose.
 
-O autor **não** consegue ligar isso por você: não há campo no `marketplace.json` nem no
-`plugin.json` que controle auto-update. O toggle é seu (ou do admin da sua organização, via
-`extraKnownMarketplaces` com `"autoUpdate": true` nas *managed settings*).
+The author **cannot** turn this on for you: there is no field in `marketplace.json` or in
+`plugin.json` that controls auto-update. The toggle is yours (or your organization admin's, via
+`extraKnownMarketplaces` with `"autoUpdate": true` in the *managed settings*).
 
-## Usar
+## Use
 
-No Claude Code, rode `/product-film` e descreva o produto/fluxo a demonstrar. O skill:
-1. Roda o fluxo **real** (Playwright) e captura screenshots + valores exatos (verdade primeiro);
-2. Replica as telas com fidelidade (tokens/fontes/dados reais), monta o roteiro em cortes;
-3. Constrói o filme sobre o motor `engine-skeleton.html` (cenas, cursor, câmera, legendas, loop);
-4. Verifica cada beat por seek e entrega um HTML único para você gravar.
+In Claude Code, run `/product-film` and describe the product/flow to demo. The skill:
+1. Runs the **real** flow (Playwright) and captures screenshots + exact values (truth first);
+2. Replicates the screens faithfully (real tokens/fonts/data), builds the script in cuts;
+3. Builds the film on top of the `engine-skeleton.html` engine (scenes, cursor, camera, captions, loop);
+4. Verifies each beat by seek and delivers a single HTML for you to record.
 
-### Modelo e effort recomendados
+### Recommended model and effort
 
-Rode com o **modelo mais capaz disponível** (Opus 4.8 / Fable 5) e **effort `high`**. As etapas
-caras do skill — replicar a UI real sem inventar estados, coreografar tudo como função pura de
-`t`, verificar beat a beat — dependem de disciplina e capacidade do modelo; modelos médios
-tendem a "embelezar" a UI e quebrar a regra de fidelidade.
+Run it with the **most capable model available** (Opus 4.8 / Fable 5) and effort `high`. The
+expensive steps of the skill — replicating the real UI without inventing states, choreographing
+everything as a pure function of `t`, verifying beat by beat — depend on the model's discipline
+and capability; mid-tier models tend to "prettify" the UI and break the fidelity rule.
 
-`high` basta como padrão: acima disso vira latência/custo sem ganho, porque o gargalo é o ciclo
-de verificação (navegar, screenshot, comparar), não raciocínio de tacada única. Escale para
-`xhigh` só pontualmente, em debugging difícil de coreografia (cursor voando, emenda de loop,
-easing de câmera); `max` não é necessário. Retoques pequenos num filme pronto (trocar legenda,
-ajustar um beat) funcionam com `medium` ou até Sonnet 5.
+`high` is enough as a default: above that it turns into latency/cost with no gain, because the
+bottleneck is the verification cycle (navigate, screenshot, compare), not single-shot reasoning.
+Escalate to `xhigh` only occasionally, for hard choreography debugging (flying cursor, loop
+splice, camera easing); `max` is not necessary. Small touch-ups on a finished film (swapping a
+caption, adjusting a beat) work with `medium` or even Sonnet 5.
 
-## Estrutura
+## Structure
 
 ```
-.claude-plugin/marketplace.json     ← catálogo (este marketplace)
+.claude-plugin/marketplace.json     ← catalog (this marketplace)
 plugins/product-film/
-├── .claude-plugin/plugin.json      ← manifesto do plugin
-├── SKILL.md                        ← o skill (invocado como /product-film)
-├── references/engine-skeleton.html ← motor pronto (cenas, legendas, cursor, câmera…)
+├── .claude-plugin/plugin.json      ← plugin manifest
+├── SKILL.md                        ← the skill (invoked as /product-film)
+├── references/engine-skeleton.html ← ready-made engine (scenes, captions, cursor, camera…)
 └── README.md
 ```
 
-## Versionamento
+## Versioning
 
-Versão atual: **1.1.1**, fixada nos dois manifestos (`plugin.json` e a entrada do plugin em
-`marketplace.json`). Estando fixada, quem já instalou só recebe atualização quando você
-**incrementa** o número e dá push — push sem bump não muda nada para quem já tem o plugin em
-cache, porque o Claude Code vê a mesma versão. (Omitir `version` faria o Claude Code seguir o
-SHA do git e tratar cada commit como versão nova — útil durante desenvolvimento.)
+Current version: **1.1.2**, pinned in both manifests (`plugin.json` and the plugin's entry in
+`marketplace.json`). Being pinned, whoever already installed it only gets an update when you
+**increment** the number and push — a push without a bump changes nothing for whoever already has
+the plugin cached, because Claude Code sees the same version. (Omitting `version` would make
+Claude Code follow the git SHA and treat every commit as a new version — useful during
+development.)
 
-O Claude Code resolve a versão pelo primeiro que existir: `version` do `plugin.json` → `version`
-da entrada no `marketplace.json` → SHA do commit. Mantenha os dois manifestos no mesmo número.
+Claude Code resolves the version by the first one that exists: `version` from `plugin.json` →
+`version` from the entry in `marketplace.json` → the commit SHA. Keep both manifests on the same
+number.
 
-## Licença
+## License
 
 MIT.

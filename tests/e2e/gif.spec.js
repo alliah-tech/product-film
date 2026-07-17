@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { FAKE_GDM } = require('../helpers/fake-gdm');
 const PAGE = '/plugins/product-film/references/engine-skeleton.html';
 
-test('encodeGif produz GIF89a válido com loop', async ({ page }) => {
+test('encodeGif produces a valid GIF89a with loop', async ({ page }) => {
   await page.goto(PAGE);
   const r = await page.evaluate(async () => {
     const s = window.__film.studio;
@@ -27,7 +27,7 @@ test('encodeGif produz GIF89a válido com loop', async ({ page }) => {
   expect(r.size).toBeGreaterThan(100);
 });
 
-test('makeGif do take gera image/gif', async ({ page }) => {
+test('makeGif from the take generates image/gif', async ({ page }) => {
   test.setTimeout(120000);
   await page.addInitScript(FAKE_GDM);
   await page.goto(PAGE);
@@ -42,7 +42,7 @@ test('makeGif do take gera image/gif', async ({ page }) => {
   expect(r.size).toBeGreaterThan(5000);
 });
 
-test('makeGif revoga objectURL também na falha (janela vazia)', async ({ page }) => {
+test('makeGif revokes the objectURL on failure too (empty window)', async ({ page }) => {
   test.setTimeout(120000);
   await page.addInitScript(FAKE_GDM);
   await page.goto(PAGE);
@@ -60,6 +60,6 @@ test('makeGif revoga objectURL também na falha (janela vazia)', async ({ page }
     return { rejected, msg, revoked };
   });
   expect(r.rejected).toBe(true);
-  expect(r.msg).toContain('janela vazia');
+  expect(r.msg).toContain('empty window');
   expect(r.revoked).toBe(1);
 });

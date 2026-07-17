@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 const PAGE = '/plugins/product-film/references/engine-skeleton.html';
 
-test('studio expõe estado idle e env com canRec', async ({ page }) => {
+test('studio exposes idle state and env with canRec', async ({ page }) => {
   await page.goto(PAGE);
   const s = await page.evaluate(() => ({
     state: window.__film.studio.state,
@@ -16,7 +16,7 @@ test('studio expõe estado idle e env com canRec', async ({ page }) => {
   await expect(page.locator('#st-nohint')).toBeHidden();
 });
 
-test('em iframe degrada para hint (sem REC)', async ({ page }) => {
+test('in an iframe it degrades to a hint (no REC)', async ({ page }) => {
   await page.goto('/tests/fixtures/iframe-host.html');
   const f = page.frameLocator('#host');
   await expect(f.locator('#st-nohint')).toBeVisible();

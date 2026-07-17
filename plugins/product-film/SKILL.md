@@ -1,69 +1,70 @@
 ---
 name: product-film
-description: Use when é preciso um vídeo de demonstração de produto (Product Hunt, landing, YouTube, artigos) e não há como produzir/editar vídeo diretamente — pedidos como "protótipo navegável que navega sozinho", "demo auto-reproduzível para eu gravar a tela", "product film", "vídeo do launch", ou quando um roteiro/storyboard de demo precisa virar algo gravável e fiel ao produto em produção.
+description: Use when a product demo video is needed (Product Hunt, landing, YouTube, articles) and there is no way to produce/edit video directly — requests like "navigable prototype that navigates itself", "demo auto-reproduzível para eu gravar a tela", "product film", "vídeo do launch", or when a demo script/storyboard needs to become something recordable and faithful to the product in production.
 ---
 
-# Product Film — protótipo auto-reproduzível para gravar
+# Product Film — self-playing prototype to record
 
 ## Overview
 
-Constrói-se um HTML único que **é** o vídeo: réplica fiel do produto que se navega sozinha
-(cursor cenográfico, legendas cinéticas, zoom/spotlight, contagem, loop), e o usuário só grava
-a tela. Princípio central: **todo estado visual é função pura de `t`** — nada de scheduler que
-"dispara" beats nem `resetStage()`; `apply(t)` idempotente torna seek, loop e teste triviais.
+A single HTML is built that **is** the video: a faithful replica of the product that navigates
+itself (staged cursor, kinetic captions, zoom/spotlight, countdown, loop), and the user only
+records the screen. Core principle: **all visual state is a pure function of `t`** — no scheduler
+that "fires" beats and no `resetStage()`; an idempotent `apply(t)` makes seek, loop and testing
+trivial.
 
-O motor de referência (`references/engine-skeleton.html`) já vem completo e testado em produção — construa o filme sobre ele preenchendo tokens, cenas e as tabelas `defFull()/defPh()`.
+The reference engine (`references/engine-skeleton.html`) already comes complete and tested in production — build the film on top of it by filling in tokens, scenes and the `defFull()/defPh()` tables.
 
-## Processo
+## Process
 
-1. **Verdade primeiro — EXECUTE o fluxo real.** Antes de replicar, rode o fluxo de verdade
-   (Playwright em prod/dev com um input real) e capture screenshots + valores exatos. Isso quase
-   sempre derruba premissas do roteiro (input sugerido que não dispara o resultado esperado,
-   strings no idioma errado, botão que não existe naquela página) → **alerte o usuário e registre
-   os achados como débitos**; nunca materialize a premissa errada no filme.
-2. **Fidelidade absoluta:** tokens/fontes/componentes copiados do código real; dados de uma
-   execução real. **Só estados alcançáveis no produto** — cena "logado/Pro" = réplica da página
-   logada REAL (shell incluso), jamais um estado híbrido inventado (ex.: teaser "desbloqueado").
-   Conteúdo gerado por IA do produto pode ser plausível-realista; UI não.
-3. **Roteiro em cortes:** PH ≈ 20s mudo em loop; full 40–60s para YouTube/landing. Legendas
-   ≤5 palavras, 1 keyword em accent. Se o projeto exigir design spec (ui-designer), é antes daqui.
-4. **Construa sobre** `references/engine-skeleton.html` (motor pronto: cenas, legendas, cursor,
-   câmera, spotlight, scroll, contagem 4·3·2·1, controles, fullscreen-fallback, `?cut&t&paused`,
-   `window.__film`). Preencha tokens, cenas e as tabelas `defFull()/defPh()`.
-5. **Verifique por SEEK, nunca assistindo em headless:** sirva local (`node http server`),
-   navegue `?cut=X&t=BEAT&paused=1`, screenshot de cada beat, compare com os screenshots de prod.
-   Headless estrangula rAF — playback cronometrado ali mente. Um run 1x em browser real no final.
-6. **Entregue:** artifact (preview em iframe **nega fullscreen E gravação** — o studio embutido
-   degrada num hint com as saídas) + cópia no repo (`docs/marketing/demo-film/`). Gravação:
-   abrir o HTML baixado no Chrome → `● Gravar take` (picker já sugere "esta guia"; contagem dá
-   a folga; o arquivo sai cortado em t=0→fim — MP4 no Chrome/Edge/Safari, WebM no Firefox).
-   Música-tema opcional mixada no take (synth embutida / MP3 local / Openverse CC com crédito —
-   corte PH permanece mudo). GIF: botão "Gerar GIF" do take (conveniência); para o GIF oficial
-   <3MB use ffmpeg/gifski sobre o MP4. OBS/ffmpeg seguem p/ gravar fora do browser e re-encode
-   (CRF ~26 + faststart).
+1. **Truth first — RUN the real flow.** Before replicating, run the real flow (Playwright on
+   prod/dev with a real input) and capture screenshots + exact values. This almost always knocks
+   down assumptions from the script (a suggested input that doesn't trigger the expected result,
+   strings in the wrong language, a button that doesn't exist on that page) → **alert the user and
+   record the findings as debts**; never materialize the wrong assumption in the film.
+2. **Absolute fidelity:** tokens/fonts/components copied from the real code; data from a real
+   run. **Only states reachable in the product** — a "logged in/Pro" scene = a replica of the REAL
+   logged-in page (shell included), never an invented hybrid state (e.g.: an "unlocked" teaser).
+   Content generated by the product's AI may be plausible-realistic; UI may not.
+3. **Script in cuts:** PH ≈ 20s muted on loop; full 40–60s for YouTube/landing. Captions
+   ≤5 words, 1 keyword in accent. If the project requires a design spec (ui-designer), that comes before this.
+4. **Build on top of** `references/engine-skeleton.html` (ready-made engine: scenes, captions,
+   cursor, camera, spotlight, scroll, 4·3·2·1 countdown, controls, fullscreen-fallback,
+   `?cut&t&paused`, `window.__film`). Fill in tokens, scenes and the `defFull()/defPh()` tables.
+5. **Verify by SEEK, never by watching in headless:** serve locally (`node http server`),
+   navigate `?cut=X&t=BEAT&paused=1`, screenshot each beat, compare with the prod screenshots.
+   Headless throttles rAF — timed playback there lies. One 1x run in a real browser at the end.
+6. **Deliver:** artifact (iframe preview **denies fullscreen AND recording** — the built-in studio
+   degrades into a hint with the ways out) + a copy in the repo (`docs/marketing/demo-film/`).
+   Recording: open the downloaded HTML in Chrome → `● Record take` (the picker already suggests
+   "this tab"; the countdown gives the slack; the file comes out cut at t=0→end — MP4 on
+   Chrome/Edge/Safari, WebM on Firefox). Optional theme music mixed into the take (built-in synth
+   / local MP3 / Openverse CC with credit — the PH cut stays muted). GIF: the take's "Make GIF"
+   button (convenience); for the official GIF <3MB use ffmpeg/gifski on the MP4. OBS/ffmpeg remain
+   for recording outside the browser and re-encoding (CRF ~26 + faststart).
 
-## Quick reference — UX de gravação (inegociável)
+## Quick reference — recording UX (non-negotiable)
 
-| Item | Comportamento |
+| Item | Behavior |
 |---|---|
-| Play/restart | Contagem 4·3·2·1 (Space pula, Esc cancela) |
-| Durante o play | Controles somem NA HORA + `cursor: none`; só borda inferior revela |
-| Teclado | Space/K, R restart, ←/→ ±2s, F fullscreen, Esc pausa |
-| Palco | 1920×1080 fixo, letterbox preto, escala p/ caber |
-| Loop | `t -= dur`; emenda por textura/frame contínuo, sem corte seco |
-| REC in-page | ● arma captura ("esta guia" + crop do palco) → contagem → grava t=0→fim → baixa MP4/WebM |
-| Música | Mixada no take via WebAudio; PH sempre mudo; fade-in 0.5s, fade-out 1.5s no fim do full |
+| Play/restart | 4·3·2·1 countdown (Space skips, Esc cancels) |
+| During play | Controls disappear IMMEDIATELY + `cursor: none`; only the bottom edge reveals them |
+| Keyboard | Space/K, R restart, ←/→ ±2s, F fullscreen, Esc pause |
+| Stage | 1920×1080 fixed, black letterbox, scales to fit |
+| Loop | `t -= dur`; splice by texture/continuous frame, no hard cut |
+| In-page REC | ● arms capture ("this tab" + stage crop) → countdown → records t=0→end → downloads MP4/WebM |
+| Music | Mixed into the take via WebAudio; PH always muted; fade-in 0.5s, fade-out 1.5s at the end of the full |
 
-## Common mistakes (todas aconteceram de verdade)
+## Common mistakes (all of them really happened)
 
-| Erro | Correção |
+| Mistake | Fix |
 |---|---|
-| Scheduler dispara beats + reset no loop | Estado = f(t); seek/loop saem de graça |
-| Cursor ancorado em elemento que troca `display` no meio do gesto | `getBoundingClientRect` de `display:none` = (0,0) → cursor voa; ancore por coordenadas fixas nesses trechos |
-| Scroll além do fim da página | Browser real para no fim: clamp `min(y, conteúdo − viewport)` |
-| Fontes via CDN | CSP de artifact bloqueia: woff2 **data URI** (fonte variável = 1 arquivo, vários pesos) |
-| `buildX()` chamado antes das tabelas `var` | Hoisting: declarações içam, atribuições não — boot no fim do script |
-| Confiar no F/fullscreen em preview | Iframe cross-origin nega a API — detectar rejeição + hint com saídas |
-| Estado de UI "montado" p/ ficar bonito | Não existe em prod = mentira no vídeo; o dono do produto percebe |
-| Overlay/painel do studio visível durante o take | Captura de guia grava TUDO que está nela: startRecorder esconde toast/painéis; nunca desenhe indicador REC no palco |
-| Música armada no corte PH | PH é mudo por convenção: `musicActive()` exige corte full — não burlar |
+| Scheduler fires beats + reset on loop | State = f(t); seek/loop come for free |
+| Cursor anchored to an element that switches `display` in the middle of the gesture | `getBoundingClientRect` of `display:none` = (0,0) → the cursor flies; anchor by fixed coordinates in those stretches |
+| Scroll past the end of the page | A real browser stops at the end: clamp `min(y, content − viewport)` |
+| Fonts via CDN | Artifact CSP blocks it: woff2 **data URI** (variable font = 1 file, several weights) |
+| `buildX()` called before the `var` tables | Hoisting: declarations hoist, assignments don't — boot at the end of the script |
+| Trusting F/fullscreen in a preview | A cross-origin iframe denies the API — detect the rejection + hint with the ways out |
+| UI state "staged" to look pretty | It doesn't exist in prod = a lie in the video; the product owner notices |
+| Studio overlay/panel visible during the take | Tab capture records EVERYTHING in it: startRecorder hides toast/panels; never draw a REC indicator on the stage |
+| Music armed on the PH cut | PH is muted by convention: `musicActive()` requires the full cut — do not circumvent |

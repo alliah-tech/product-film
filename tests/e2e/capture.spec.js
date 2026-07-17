@@ -5,7 +5,7 @@ const PAGE = '/plugins/product-film/references/engine-skeleton.html';
 
 test.beforeEach(async ({ page }) => { await page.addInitScript(FAKE_GDM); });
 
-test('pickMime: cascata mp4 → webm, com e sem áudio', async ({ page }) => {
+test('pickMime: mp4 → webm cascade, with and without audio', async ({ page }) => {
   await page.goto(PAGE);
   const r = await page.evaluate(() => {
     const pm = window.__film.studio.pickMime;
@@ -23,7 +23,7 @@ test('pickMime: cascata mp4 → webm, com e sem áudio', async ({ page }) => {
   expect(r.none).toBe('');
 });
 
-test('take PH one-click: começa em t=0, para no fim, sem áudio, baixável', async ({ page }) => {
+test('one-click PH take: starts at t=0, stops at the end, no audio, downloadable', async ({ page }) => {
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
   await page.evaluate(() => window.__film.studio.rec('ph'));
@@ -36,7 +36,7 @@ test('take PH one-click: começa em t=0, para no fim, sem áudio, baixável', as
   expect(tk.size).toBeGreaterThan(20000);
   const expectedMime = await page.evaluate(() => window.__film.studio.pickMime((m) => MediaRecorder.isTypeSupported(m), false));
   expect(expectedMime).not.toBe('');
-  expect(tk.mime).toBe(expectedMime); /* primeiro candidato suportado da cascata (mp4 no Chrome >=126; webm em builds sem h264) */
+  expect(tk.mime).toBe(expectedMime); /* first supported candidate from the cascade (mp4 on Chrome >=126; webm on builds without h264) */
   expect(tk.cut).toBe('ph');
   expect(tk.audio).toBe(0);
   expect(tk.partial).toBe(false);
@@ -46,7 +46,7 @@ test('take PH one-click: começa em t=0, para no fim, sem áudio, baixável', as
   await expect(page.locator('#st-toast')).toBeVisible();
 });
 
-test('Esc durante o take → parcial', async ({ page }) => {
+test('Esc during the take → partial', async ({ page }) => {
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
   await page.evaluate(() => window.__film.studio.rec('ph'));
@@ -57,7 +57,7 @@ test('Esc durante o take → parcial', async ({ page }) => {
   expect(await page.evaluate(() => window.__film.studio.lastTake.partial)).toBe(true);
 });
 
-test('abort durante a contagem não crasheia nem inicia gravação', async ({ page }) => {
+test('abort during the countdown neither crashes nor starts recording', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(PAGE);
@@ -65,7 +65,7 @@ test('abort durante a contagem não crasheia nem inicia gravação', async ({ pa
   await page.evaluate(() => window.__film.studio.rec('ph'));
   await page.waitForFunction(() => window.__film.studio.state === 'arming');
   await page.evaluate(() => window.__film.studio.abort());
-  await page.waitForTimeout(5500); /* a contagem inteira teria disparado */
+  await page.waitForTimeout(5500); /* the whole countdown would have fired */
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => window.__film.studio.state)).toBe('idle');
 });

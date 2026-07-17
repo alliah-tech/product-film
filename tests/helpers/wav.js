@@ -1,5 +1,5 @@
 'use strict';
-/* Gera um WAV PCM16 mono (fixture de áudio para testes). */
+/* Generates a mono PCM16 WAV (audio fixture for tests). */
 function wavBuffer(seconds, hz) {
   seconds = seconds || 1; hz = hz || 440;
   const rate = 44100, n = Math.floor(rate * seconds);
