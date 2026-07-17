@@ -98,7 +98,7 @@ plugins/product-film/
 
 ## Versionamento
 
-Versão atual: **1.1.0**, fixada nos dois manifestos (`plugin.json` e a entrada do plugin em
+Versão atual: **1.1.1**, fixada nos dois manifestos (`plugin.json` e a entrada do plugin em
 `marketplace.json`). Estando fixada, quem já instalou só recebe atualização quando você
 **incrementa** o número e dá push — push sem bump não muda nada para quem já tem o plugin em
 cache, porque o Claude Code vê a mesma versão. (Omitir `version` faria o Claude Code seguir o

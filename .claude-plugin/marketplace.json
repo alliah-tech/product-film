@@ -1,6 +1,6 @@
 {
   "name": "product-film-marketplace",
-  "description": "Marketplace do plugin product-film — protótipo auto-reproduzível para gravar vídeos de demonstração de produto.",
+  "description": "Marketplace for the product-film plugin — a self-playing prototype you record to get your product demo video.",
   "version": "1.0.0",
   "owner": {
     "name": "Alliah Tech"
@@ -8,8 +8,8 @@
   "plugins": [
     {
       "name": "product-film",
-      "description": "Constrói um HTML único que É o vídeo de demo: réplica fiel do produto que se navega sozinha (cursor, legendas, zoom, loop). Você só grava a tela.",
-      "version": "1.1.0",
+      "description": "Build a self-playing product demo from a single HTML file: a faithful replica of your product that navigates itself — cinematic cursor, kinetic captions, zoom/spotlight, countdown, loop. You just record the screen. Ideal for Product Hunt launches, landing pages, and YouTube demo videos.",
+      "version": "1.1.1",
       "category": "productivity",
       "source": "./plugins/product-film"
     }
