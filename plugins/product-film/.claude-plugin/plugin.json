@@ -1,7 +1,7 @@
 {
   "name": "product-film",
   "description": "Constrói um HTML único que É o vídeo de demonstração: réplica fiel do produto que se navega sozinha (cursor cenográfico, legendas cinéticas, zoom/spotlight, contagem, loop). O usuário só grava a tela. Todo estado visual é função pura de t.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "Alliah Tech"
   },

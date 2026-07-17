@@ -1,0 +1,11 @@
+{
+  "name": "product-film-dev",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "serve": "node tests/serve.cjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

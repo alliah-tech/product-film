@@ -33,10 +33,14 @@ O motor de referência (`references/engine-skeleton.html`) já vem completo e te
 5. **Verifique por SEEK, nunca assistindo em headless:** sirva local (`node http server`),
    navegue `?cut=X&t=BEAT&paused=1`, screenshot de cada beat, compare com os screenshots de prod.
    Headless estrangula rAF — playback cronometrado ali mente. Um run 1x em browser real no final.
-6. **Entregue:** artifact (avise que preview em iframe **nega fullscreen** — o hint do skeleton
-   oferece aba standalone/arquivo local/OBS região) + cópia no repo (`docs/marketing/demo-film/`)
-   + instruções: F → escolher corte → contagem dá a folga → cortar o vídeo no fim do "1".
-   Derivados depois: re-encode ffmpeg (CRF ~26 + faststart) p/ landing, GIF <3MB, stills.
+6. **Entregue:** artifact (preview em iframe **nega fullscreen E gravação** — o studio embutido
+   degrada num hint com as saídas) + cópia no repo (`docs/marketing/demo-film/`). Gravação:
+   abrir o HTML baixado no Chrome → `● Gravar take` (picker já sugere "esta guia"; contagem dá
+   a folga; o arquivo sai cortado em t=0→fim — MP4 no Chrome/Edge/Safari, WebM no Firefox).
+   Música-tema opcional mixada no take (synth embutida / MP3 local / Openverse CC com crédito —
+   corte PH permanece mudo). GIF: botão "Gerar GIF" do take (conveniência); para o GIF oficial
+   <3MB use ffmpeg/gifski sobre o MP4. OBS/ffmpeg seguem p/ gravar fora do browser e re-encode
+   (CRF ~26 + faststart).
 
 ## Quick reference — UX de gravação (inegociável)
 
@@ -47,6 +51,8 @@ O motor de referência (`references/engine-skeleton.html`) já vem completo e te
 | Teclado | Space/K, R restart, ←/→ ±2s, F fullscreen, Esc pausa |
 | Palco | 1920×1080 fixo, letterbox preto, escala p/ caber |
 | Loop | `t -= dur`; emenda por textura/frame contínuo, sem corte seco |
+| REC in-page | ● arma captura ("esta guia" + crop do palco) → contagem → grava t=0→fim → baixa MP4/WebM |
+| Música | Mixada no take via WebAudio; PH sempre mudo; fade-in 0.5s, fade-out 1.5s no fim do full |
 
 ## Common mistakes (todas aconteceram de verdade)
 
@@ -59,3 +65,5 @@ O motor de referência (`references/engine-skeleton.html`) já vem completo e te
 | `buildX()` chamado antes das tabelas `var` | Hoisting: declarações içam, atribuições não — boot no fim do script |
 | Confiar no F/fullscreen em preview | Iframe cross-origin nega a API — detectar rejeição + hint com saídas |
 | Estado de UI "montado" p/ ficar bonito | Não existe em prod = mentira no vídeo; o dono do produto percebe |
+| Overlay/painel do studio visível durante o take | Captura de guia grava TUDO que está nela: startRecorder esconde toast/painéis; nunca desenhe indicador REC no palco |
+| Música armada no corte PH | PH é mudo por convenção: `musicActive()` exige corte full — não burlar |
