@@ -56,3 +56,16 @@ test('Esc durante o take → parcial', async ({ page }) => {
   await page.waitForFunction(() => window.__film.studio.state === 'idle' && !!window.__film.studio.lastTake, null, { timeout: 10000 });
   expect(await page.evaluate(() => window.__film.studio.lastTake.partial)).toBe(true);
 });
+
+test('abort durante a contagem não crasheia nem inicia gravação', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(PAGE);
+  await page.evaluate(() => { window.__film.studio.autoDownload = false; });
+  await page.evaluate(() => window.__film.studio.rec('ph'));
+  await page.waitForFunction(() => window.__film.studio.state === 'arming');
+  await page.evaluate(() => window.__film.studio.abort());
+  await page.waitForTimeout(5500); /* a contagem inteira teria disparado */
+  expect(errors).toEqual([]);
+  expect(await page.evaluate(() => window.__film.studio.state)).toBe('idle');
+});

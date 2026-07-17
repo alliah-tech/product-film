@@ -694,7 +694,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
         : Promise.resolve();
       return crop.then(function () {
         var mixTrack = mixerAudioTrack();
-        if (mixTrack) stream.addTrack(mixTrack);
+        /* clone: parar o take nao pode matar a track singleton do recDest */
+        if (mixTrack) stream.addTrack(mixTrack.clone());
         vt.addEventListener('ended', function () {
           if (recState.state === 'recording') stopTake('partial');
           else if (recState.state === 'arming') studioAbortArming();
@@ -791,6 +792,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
 
   function studioAbortArming() {
+    cancelCountdown(); /* abortar durante a contagem nao pode deixar o startRecorder disparar */
     if (recState.stream) { recState.stream.getTracks().forEach(function (tr) { tr.stop(); }); recState.stream = null; }
     if (recState.state === 'arming') recState.state = 'idle';
     updateStudioUi();
@@ -1246,7 +1248,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
         label.textContent = trk.title + ' — ' + (trk.creator || '?') + ' [' + trk.license + ']';
         var use = document.createElement('button');
         use.textContent = 'Usar';
-        use.addEventListener('click', function () { $('#mp-list').querySelectorAll('button').forEach(function (b) { b.disabled = true; }); MUSIC.pending = pickApiTrack(trk); });
+        use.addEventListener('click', function () { $('#mp-list').querySelectorAll('button').forEach(function (b) { b.disabled = true; }); MUSIC.pending = setMusic({ type: 'api', trk: trk }); });
         row.appendChild(label); row.appendChild(use);
         $('#mp-list').appendChild(row);
       });
