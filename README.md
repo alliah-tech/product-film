@@ -72,6 +72,19 @@ No Claude Code, rode `/product-film` e descreva o produto/fluxo a demonstrar. O 
 3. Constrói o filme sobre o motor `engine-skeleton.html` (cenas, cursor, câmera, legendas, loop);
 4. Verifica cada beat por seek e entrega um HTML único para você gravar.
 
+### Modelo e effort recomendados
+
+Rode com o **modelo mais capaz disponível** (Opus 4.8 / Fable 5) e **effort `high`**. As etapas
+caras do skill — replicar a UI real sem inventar estados, coreografar tudo como função pura de
+`t`, verificar beat a beat — dependem de disciplina e capacidade do modelo; modelos médios
+tendem a "embelezar" a UI e quebrar a regra de fidelidade.
+
+`high` basta como padrão: acima disso vira latência/custo sem ganho, porque o gargalo é o ciclo
+de verificação (navegar, screenshot, comparar), não raciocínio de tacada única. Escale para
+`xhigh` só pontualmente, em debugging difícil de coreografia (cursor voando, emenda de loop,
+easing de câmera); `max` não é necessário. Retoques pequenos num filme pronto (trocar legenda,
+ajustar um beat) funcionam com `medium` ou até Sonnet 5.
+
 ## Estrutura
 
 ```

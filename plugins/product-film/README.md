@@ -20,6 +20,10 @@ seek, loop e teste triviais (sem scheduler que "dispara" beats, sem `resetStage(
 replica as telas com fidelidade, monta o roteiro em cortes, constrói o filme e verifica cada
 beat por seek antes de entregar.
 
+Recomendado: **modelo mais capaz disponível (Opus 4.8 / Fable 5) com effort `high`** — fidelidade
+de UI e coreografia em `apply(t)` sofrem com modelos médios. `xhigh` só como escalada pontual em
+debugging difícil de coreografia; retoques pequenos vão bem com `medium`.
+
 ## Studio embutido (gravação in-page)
 
 Todo filme gerado sai com estúdio: `● Gravar take` captura a própria guia
