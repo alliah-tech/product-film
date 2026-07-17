@@ -1,7 +1,7 @@
 {
   "name": "product-film",
   "description": "Build a self-playing product demo from a single HTML file: a faithful replica of your product that navigates itself — cinematic cursor, kinetic captions, zoom/spotlight, countdown, loop. You just record the screen. Ideal for Product Hunt launches, landing pages, and YouTube demo videos.",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "author": {
     "name": "Alliah Tech"
   },

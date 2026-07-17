@@ -15,7 +15,7 @@ test('renderSynth produces stereo buffers with the loop duration', async ({ page
   expect(r.dur).toBeCloseTo(16, 0); /* 8 bars × 4 beats ÷ 120bpm */
 });
 
-test('full take with Pulse comes out with an audio track; PH comes out muted', async ({ page }) => {
+test('takes with Pulse carry an audio track on BOTH cuts (PH included)', async ({ page }) => {
   test.setTimeout(120000);
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
@@ -23,12 +23,12 @@ test('full take with Pulse comes out with an audio track; PH comes out muted', a
   await page.evaluate(() => window.__film.studio.rec('full'));
   await page.waitForFunction(() => window.__film.studio.state === 'idle' && !!window.__film.studio.lastTake, null, { timeout: 40000 });
   expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
-  /* even with music selected, PH records muted */
+  /* music is no longer gated to the full cut — the PH guidance is a panel note */
   await page.evaluate(() => window.__film.studio.rec('ph'));
   await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 15000 });
   await page.evaluate(() => window.__film.studio.stop());
   await page.waitForFunction(() => window.__film.studio.state === 'idle', null, { timeout: 10000 });
-  expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(0);
+  expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
 });
 
 test('music panel selects a synth through the UI', async ({ page }) => {

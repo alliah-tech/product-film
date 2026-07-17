@@ -36,10 +36,11 @@ The reference engine (`references/engine-skeleton.html`) already comes complete 
    Headless throttles rAF — timed playback there lies. One 1x run in a real browser at the end.
 6. **Deliver:** artifact (iframe preview **denies fullscreen AND recording** — the built-in studio
    degrades into a hint with the ways out) + a copy in the repo (`docs/marketing/demo-film/`).
-   Recording: open the downloaded HTML in Chrome → `● Record take` (the picker already suggests
-   "this tab"; the countdown gives the slack; the file comes out cut at t=0→end — MP4 on
-   Chrome/Edge/Safari, WebM on Firefox). Optional theme music mixed into the take (built-in synth
-   / local MP3 / Openverse CC with credit — the PH cut stays muted). GIF: the take's "Make GIF"
+   Recording: open the downloaded HTML in Chrome → `● Record` on the cut's card (also in the
+   controls and the pause menu; the picker already suggests "this tab"; the countdown gives the
+   slack; the file comes out cut at t=0→end — MP4 on Chrome/Edge/Safari, WebM on Firefox).
+   Optional theme music mixed into the take on either cut (built-in synth / local MP3 / Openverse
+   CC with credit; ▶ auditions in the panel; keep "None" for a PH upload). GIF: the take's "Make GIF"
    button (convenience); for the official GIF <3MB use ffmpeg/gifski on the MP4. OBS/ffmpeg remain
    for recording outside the browser and re-encoding (CRF ~26 + faststart).
 
@@ -47,13 +48,15 @@ The reference engine (`references/engine-skeleton.html`) already comes complete 
 
 | Item | Behavior |
 |---|---|
+| Start screen | Big per-cut cards, each with its own `▶ Watch` and `● Record`; prominent `♪ Theme music` button. Sized for 1920×1080 scaled DOWN in embeds |
 | Play/restart | 4·3·2·1 countdown (Space skips, Esc cancels) |
 | During play | Controls disappear IMMEDIATELY + `cursor: none`; only the bottom edge reveals them |
-| Keyboard | Space/K, R restart, ←/→ ±2s, F fullscreen, Esc pause |
+| Stage click | Playing → pause + menu (Resume / Restart / Record / Music / Start screen); paused → resume. Menu NEVER shows mid-take |
+| Keyboard | Space/K, R restart, ←/→ ±2s, F fullscreen, Esc pause/close menu |
 | Stage | 1920×1080 fixed, black letterbox, scales to fit |
 | Loop | `t -= dur`; splice by texture/continuous frame, no hard cut |
 | In-page REC | ● arms capture ("this tab" + stage crop) → countdown → records t=0→end → downloads MP4/WebM |
-| Music | Mixed into the take via WebAudio; PH always muted; fade-in 0.5s, fade-out 1.5s at the end of the full |
+| Music | Mixed into the take via WebAudio on either cut; fade-in 0.5s, fade-out 1.5s; ▶ audition in the panel (never routed into the take); panel notes that Product Hunt autoplays muted |
 
 ## Common mistakes (all of them really happened)
 
@@ -67,4 +70,4 @@ The reference engine (`references/engine-skeleton.html`) already comes complete 
 | Trusting F/fullscreen in a preview | A cross-origin iframe denies the API — detect the rejection + hint with the ways out |
 | UI state "staged" to look pretty | It doesn't exist in prod = a lie in the video; the product owner notices |
 | Studio overlay/panel visible during the take | Tab capture records EVERYTHING in it: startRecorder hides toast/panels; never draw a REC indicator on the stage |
-| Music armed on the PH cut | PH is muted by convention: `musicActive()` requires the full cut — do not circumvent |
+| Forcing music into a Product Hunt upload | The PH gallery autoplays muted — record the short loop with music on "None" for PH (the panel notes it; the engine no longer hard-blocks music per cut) |
