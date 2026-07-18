@@ -262,7 +262,6 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   <div id="music-panel">
     <div class="mp-title">Theme music <span class="mp-note">(plays on both cuts &middot; &#9654; auditions)</span></div>
     <label class="mp-row"><input type="radio" name="mp" value="none" checked> None</label>
-    <label class="mp-row"><input type="radio" name="mp" value="pulse"> Pulse (upbeat) <button class="mp-prev" data-prev="pulse" title="audition">&#9654;</button></label>
     <label class="mp-row"><input type="radio" name="mp" value="glass"> Glass (corporate) <button class="mp-prev" data-prev="glass" title="audition">&#9654;</button></label>
     <label class="mp-row"><input type="radio" name="mp" value="drift"> Drift (lo-fi) <button class="mp-prev" data-prev="drift" title="audition">&#9654;</button></label>
     <label class="mp-row"><input type="radio" name="mp" value="file"> Local file&hellip; <input type="file" id="mp-file" accept="audio/*"> <button class="mp-prev" data-prev="file" title="audition">&#9654;</button></label>
@@ -915,7 +914,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   /* ---------- STUDIO: music (WebAudio mixer) ---------- */
   var actx = null, musicGain = null, fadeGain = null, masterGain = null, recDest = null;
   var MUSIC = { sel: { type: 'none', label: 'None' }, route: 'buffer', buf: null, el: null, src: null, gainBase: 0.7, credit: '', pending: null };
-  var SYNTH_LABELS = { pulse: 'Pulse (upbeat)', glass: 'Glass (corporate)', drift: 'Drift (lo-fi)' };
+  var SYNTH_LABELS = { glass: 'Glass (corporate)', drift: 'Drift (lo-fi)' };
 
   function ensureCtx() {
     if (actx) return;
@@ -983,7 +982,6 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   /* ---------- STUDIO: synths (offline render → buffer; deterministic) ---------- */
   var synthCache = {};
   var SYNTHS = {
-    pulse: { bpm: 120, bars: 8, build: buildPulse },
     glass: { bpm: 96, bars: 8, build: buildGlass },
     drift: { bpm: 82, bars: 8, build: buildDrift }
   };
@@ -1033,25 +1031,6 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     var g = adsr(oc, t0, 0.32, 0.002, 0.22, peak);
     o.connect(g); g.connect(dest);
     o.start(t0); o.stop(t0 + 0.4);
-  }
-  function buildPulse(oc, def) {
-    var out = oc.createGain(); out.gain.value = 0.5;
-    var lp = oc.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000;
-    out.connect(lp); lp.connect(oc.destination);
-    var nb = noiseBuf(oc), spb = 60 / def.bpm;
-    var chords = [57, 53, 48, 55], third = { 57: 3, 53: 4, 48: 4, 55: 4 }; /* Am F C G */
-    for (var bar = 0; bar < def.bars; bar++) {
-      var root = chords[bar % 4], t0 = bar * 4 * spb;
-      for (var b = 0; b < 4; b++) {
-        var tb = t0 + b * spb;
-        kick(oc, out, tb, 0.9);
-        hit(oc, out, nb, tb + spb / 2, 0.05, 0.18, 7000);
-        tone(oc, out, 'square', root - 24, tb, spb * 0.45, 0.22, 0.005, 0.05);
-        tone(oc, out, 'square', root - 24, tb + spb / 2, spb * 0.4, 0.16, 0.005, 0.05);
-        var arp = [0, 7, third[root], 12];
-        tone(oc, out, 'triangle', root + arp[b], tb, spb * 0.9, 0.12, 0.01, 0.2);
-      }
-    }
   }
   function buildGlass(oc, def) {
     var out = oc.createGain(); out.gain.value = 0.45;
@@ -1425,7 +1404,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       var v = r.value;
       $('#mp-api').style.display = v === 'api' ? '' : 'none';
       if (v === 'none') setMusic({ type: 'none' });
-      else if (v === 'pulse' || v === 'glass' || v === 'drift') setMusic({ type: 'synth', id: v });
+      else if (v === 'glass' || v === 'drift') setMusic({ type: 'synth', id: v });
       /* 'file' and 'api' only select on loading the file / clicking Use */
     });
   });

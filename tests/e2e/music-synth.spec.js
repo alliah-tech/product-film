@@ -8,18 +8,18 @@ test.beforeEach(async ({ page }) => { await page.addInitScript(FAKE_GDM); });
 test('renderSynth produces stereo buffers with the loop duration', async ({ page }) => {
   await page.goto(PAGE);
   const r = await page.evaluate(async () => {
-    const b = await window.__film.studio.renderSynth('pulse');
+    const b = await window.__film.studio.renderSynth('glass');
     return { dur: b.duration, ch: b.numberOfChannels };
   });
   expect(r.ch).toBe(2);
-  expect(r.dur).toBeCloseTo(16, 0); /* 8 bars × 4 beats ÷ 120bpm */
+  expect(r.dur).toBeCloseTo(20, 0); /* 8 bars × 4 beats ÷ 96bpm */
 });
 
-test('takes with Pulse carry an audio track on BOTH cuts (PH included)', async ({ page }) => {
+test('takes with Glass carry an audio track on BOTH cuts (PH included)', async ({ page }) => {
   test.setTimeout(120000);
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
-  await page.evaluate(() => window.__film.studio.setMusic({ type: 'synth', id: 'pulse' }));
+  await page.evaluate(() => window.__film.studio.setMusic({ type: 'synth', id: 'glass' }));
   await page.evaluate(() => window.__film.studio.rec('full'));
   await page.waitForFunction(() => window.__film.studio.state === 'idle' && !!window.__film.studio.lastTake, null, { timeout: 40000 });
   expect(await page.evaluate(() => window.__film.studio.lastTake.audioTracks)).toBe(1);
@@ -63,7 +63,7 @@ test('two full takes in a row with synth record LIVE audio on both (retake)', as
   });
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
-  await page.evaluate(() => window.__film.studio.setMusic({ type: 'synth', id: 'pulse' }));
+  await page.evaluate(() => window.__film.studio.setMusic({ type: 'synth', id: 'glass' }));
   for (let take = 0; take < 2; take++) {
     await page.evaluate(() => window.__film.studio.rec('full'));
     await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 20000 });
