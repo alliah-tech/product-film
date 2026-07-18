@@ -43,13 +43,13 @@ test('pause menu home returns to the start screen at t=0', async ({ page }) => {
 test('audition previews without selecting; selecting stops the preview', async ({ page }) => {
   await page.goto(PAGE);
   await page.click('#st-music');
-  await page.click('[data-prev="pulse"]');
-  await expect(page.locator('[data-prev="pulse"]')).toHaveText('■');
+  await page.click('[data-prev="glass"]');
+  await expect(page.locator('[data-prev="glass"]')).toHaveText('■');
   expect(await page.evaluate(() => document.querySelector('input[name="mp"]:checked').value)).toBe('none');
   expect(await page.evaluate(() => window.__film.studio.music.sel.type)).toBe('none');
-  await page.check('input[name="mp"][value="pulse"]');
-  await expect(page.locator('[data-prev="pulse"]')).toHaveText('▶');
-  await expect(page.locator('#st-music-name')).toHaveText('Pulse (upbeat)');
+  await page.check('input[name="mp"][value="glass"]');
+  await expect(page.locator('[data-prev="glass"]')).toHaveText('▶');
+  await expect(page.locator('#st-music-name')).toHaveText('Glass (corporate)');
 });
 
 test('typing in the Openverse search does not trigger player shortcuts', async ({ page }) => {
