@@ -27,6 +27,27 @@ test('stage click pauses with menu; backdrop click resumes; Esc closes', async (
   expect(await isPlaying(page)).toBe(false);
 });
 
+test('Hide menu leaves a clean paused frame (read it, take a screenshot); Esc brings the menu back', async ({ page }) => {
+  await page.goto(PAGE);
+  await page.click('.cbbtn[data-play="full"]');
+  await page.keyboard.press('Space'); /* skips the countdown */
+  await page.waitForFunction(() => document.getElementById('app').classList.contains('playing'));
+  await page.locator('#stage').click();
+  await expect(page.locator('#pause-menu')).toBeVisible();
+  await page.click('#pm-view');
+  await expect(page.locator('#pause-menu')).toBeHidden();
+  expect(await isPlaying(page)).toBe(false);
+  /* mid-screen mouse moves don't bring the control bar over the frame (only the bottom edge does) */
+  await page.mouse.move(300, 200);
+  await page.mouse.move(320, 240);
+  await expect(page.locator('#controls')).not.toHaveClass(/show/);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#pause-menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#pause-menu')).toBeHidden();
+  expect(await isPlaying(page)).toBe(false);
+});
+
 test('pause menu home returns to the start screen at t=0', async ({ page }) => {
   await page.goto(PAGE);
   await page.click('.cbbtn[data-play="ph"]');

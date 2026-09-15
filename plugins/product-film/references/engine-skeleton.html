@@ -231,13 +231,14 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       <div class="pm-box">
         <div class="pm-title">Paused</div>
         <button class="pmbtn" id="pm-resume">&#9654;&ensp;Resume</button>
+        <button class="pmbtn" id="pm-view">&#9635;&ensp;Hide menu &mdash; look at the frame</button>
         <button class="pmbtn" id="pm-restart">&#8634;&ensp;Restart</button>
         <button class="pmbtn" id="pm-rec"><span class="rec-dot"></span>Record take</button>
         <button class="pmbtn" id="pm-music">&#9834;&ensp;Theme music&hellip;</button>
         <button class="pmbtn" id="pm-format">&#9645;&ensp;Format: <span class="fmt-name">Landscape 16:9</span></button>
         <button class="pmbtn" id="pm-speed">&#9201;&ensp;Speed: <span class="spd-name">1&times;</span></button>
         <button class="pmbtn" id="pm-home">&#8962;&ensp;Start screen</button>
-        <div class="pm-hint">Click the stage to resume &middot; Esc closes</div>
+        <div class="pm-hint">Click the stage to resume &middot; Esc hides / brings back this menu</div>
       </div>
     </div>
 
@@ -595,6 +596,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   function play() {
     if (playing) return;
     hidePauseMenu();
+    cleanView = false;
     playing = true; lastTs = null;
     $('#c-play').innerHTML = '&#10074;&#10074;';
     app.classList.add('playing');            /* the OS cursor disappears */
@@ -678,11 +680,16 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     else if (e.key === 'f' || e.key === 'F') toggleFs();
     else if (e.key === '[') setSpeedStep(-1);
     else if (e.key === ']') setSpeedStep(1);
-    else if (e.key === 'Escape') { if (playing) userPause(); else hidePauseMenu(); }
+    else if (e.key === 'Escape') {
+      if (playing) userPause();
+      else if (!started || studioBusy()) hidePauseMenu();
+      else if (pauseMenu.classList.contains('on')) viewFrame();
+      else showPauseMenu();
+    }
   });
 
   /* During play, only the mouse on the BOTTOM EDGE reveals the controls (clean take). */
-  var hideTimer = null, suppressUntil = 0;
+  var hideTimer = null, suppressUntil = 0, cleanView = false; /* paused with the menu hidden: look at the frame */
   function pokeControls() {
     if (!started || counting) return;
     controls.classList.add('show');
@@ -692,7 +699,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   window.addEventListener('mousemove', function (e) {
     if (!started || counting) return;
     if (performance.now() < suppressUntil) return;
-    if (playing && e.clientY < window.innerHeight - 72) return;
+    if ((playing || cleanView) && e.clientY < window.innerHeight - 72) return;
     pokeControls();
   });
 
@@ -700,6 +707,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
      real clicks during play belong to the viewer). Menu never shows mid-take. */
   var pauseMenu = $('#pause-menu');
   function hidePauseMenu() { pauseMenu.classList.remove('on'); }
+  function viewFrame() { hidePauseMenu(); cleanView = true; controls.classList.remove('show'); clearTimeout(hideTimer); }
+  function showPauseMenu() { cleanView = false; pauseMenu.classList.add('on'); }
   function userPause() {
     if (!playing) return;
     pause();
@@ -1763,6 +1772,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     b.addEventListener('click', function (e) { e.stopPropagation(); studioRec(b.getAttribute('data-rec')); });
   });
   $('#pm-resume').addEventListener('click', function () { play(); });
+  $('#pm-view').addEventListener('click', viewFrame);
   $('#pm-restart').addEventListener('click', restart);
   $('#pm-rec').addEventListener('click', function () { hidePauseMenu(); studioRec(cutName); });
   $('#pm-music').addEventListener('click', function () { $('#music-panel').classList.add('on'); });
