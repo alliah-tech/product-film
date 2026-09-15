@@ -45,10 +45,14 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 
 /* ---------- Stage 1920×1080 (or 1080×1920 in the vertical format), scaled to fit ---------- */
 #app.fmt-portrait #stage { width: 1080px; height: 1920px; }
+/* Vertical: the start screen, pause menu and countdown grow 1.6x — a portrait stage shows at
+   about half the scale of a landscape one on a desktop, and they must read on a phone */
+#app.fmt-portrait #start .s-inner, #app.fmt-portrait #pause-menu .pm-box, #app.fmt-portrait #countdown .cd-sub { zoom: 1.6; }
 #app.fmt-portrait #start .s-cuts { flex-direction: column; }
-#app.fmt-portrait .cutbtn { width: 760px; }
-#app.fmt-portrait .s-studio { flex-wrap: wrap; justify-content: center; max-width: 900px; }
-#app.fmt-portrait #start .s-hints { flex-wrap: wrap; justify-content: center; max-width: 900px; }
+#app.fmt-portrait .cutbtn { width: 620px; }
+#app.fmt-portrait .s-studio { flex-wrap: wrap; justify-content: center; max-width: 620px; }
+#app.fmt-portrait #start .s-hints { flex-wrap: wrap; justify-content: center; max-width: 620px; row-gap: 10px; }
+#app.fmt-portrait #st-nohint { max-width: 620px; }
 #stage {
   position: relative; width: 1920px; height: 1080px; flex: none;
   background: var(--color-bg); overflow: hidden;
@@ -341,26 +345,38 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   var startOv = $('#start'), controls = $('#controls');
   var cdEl = $('#countdown'), cdNum = $('#countdown .num'), fsHint = $('#fs-hint');
 
-  /* ---------- stage fit (letterbox) ---------- */
+  /* ---------- stage fit (letterbox) ----------
+     ROT: during a take whose stage is taller than the window allows (vertical on a
+     landscape screen), the stage turns 90° to span the screen's long side; the recorder
+     turns the frames back upright (see "rotated take"). */
+  var ROT = false;
+  function fitScale(rot) {
+    var W = window.innerWidth, H = window.innerHeight;
+    return rot ? Math.min(W / STAGE.h, H / STAGE.w) : Math.min(W / STAGE.w, H / STAGE.h);
+  }
   function fit() {
-    var s = Math.min(window.innerWidth / STAGE.w, window.innerHeight / STAGE.h);
-    stage.style.transform = 'scale(' + s + ')';
+    stage.style.transform = (ROT ? 'rotate(90deg) ' : '') + 'scale(' + fitScale(ROT) + ')';
     stage.style.transformOrigin = 'center center';
   }
   window.addEventListener('resize', fit); fit();
 
-  /* Position in stage coordinates (works with a zoomed camera).
+  /* An element's box in stage coordinates (works with a zoomed camera and a rotated take).
      WARNING: an element with display:none has rect (0,0) — for targets that
      switch display in the middle of the gesture, anchor by fixed coordinates. */
+  function stageBox(el) {
+    var r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    if (ROT) { /* rotate(90deg): stage x runs down the screen, stage y from right to left */
+      var q = sr.height / STAGE.w;
+      return { x: (r.top - sr.top) / q, y: (sr.right - r.right) / q, w: r.height / q, h: r.width / q };
+    }
+    var k = sr.width / STAGE.w;
+    return { x: (r.left - sr.left) / k, y: (r.top - sr.top) / k, w: r.width / k, h: r.height / k };
+  }
   function stagePos(sel, fx, fy) {
     var el = typeof sel === 'string' ? $(sel) : sel;
     if (!el) return { x: 960, y: 540 };
-    var r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-    var k = sr.width / STAGE.w;
-    return {
-      x: (r.left - sr.left + r.width * (fx == null ? 0.5 : fx)) / k,
-      y: (r.top - sr.top + r.height * (fy == null ? 0.5 : fy)) / k
-    };
+    var b = stageBox(el);
+    return { x: b.x + b.w * (fx == null ? 0.5 : fx), y: b.y + b.h * (fy == null ? 0.5 : fy) };
   }
 
   /* ============================================================
@@ -457,11 +473,10 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
         scale = lerp(c.scale[0], c.scale[1], easeDecel(win(t, c.w[0], c.w[1])));
         var el = $(c.sel);
         if (el) {
-          var r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-          var k = sr.width / STAGE.w;
+          var b = stageBox(el);
           var m = film.style.transform ? parseFloat((film.style.transform.match(/scale\(([\d.]+)\)/) || [0, 1])[1]) : 1;
           var oc = (film.style.transformOrigin || (STAGE.w / 2) + 'px ' + (STAGE.h / 2) + 'px').split(' ').map(parseFloat);
-          var sx = (r.left - sr.left + r.width / 2) / k, sy = (r.top - sr.top + r.height / 2) / k;
+          var sx = b.x + b.w / 2, sy = b.y + b.h / 2;
           origin = ((sx - oc[0]) / m + oc[0]) + 'px ' + ((sy - oc[1]) / m + oc[1]) + 'px';
         }
         break;
@@ -478,12 +493,11 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     if (!d) { dimring.style.opacity = 0; return; }
     var el = $(d.sel);
     if (!el) { dimring.style.opacity = 0; return; }
-    var r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-    var k = sr.width / STAGE.w, pad = d.pad || 0;
-    dimring.style.left = ((r.left - sr.left) / k - pad) + 'px';
-    dimring.style.top = ((r.top - sr.top) / k - pad) + 'px';
-    dimring.style.width = (r.width / k + pad * 2) + 'px';
-    dimring.style.height = (r.height / k + pad * 2) + 'px';
+    var b = stageBox(el), pad = d.pad || 0;
+    dimring.style.left = (b.x - pad) + 'px';
+    dimring.style.top = (b.y - pad) + 'px';
+    dimring.style.width = (b.w + pad * 2) + 'px';
+    dimring.style.height = (b.h + pad * 2) + 'px';
     dimring.style.opacity = (t <= d.w[1]) ? 1 : (1 - win(t, d.w[1], d.w[1] + 0.25));
   }
   /* A real browser stops at the end of the document — clamp is mandatory. */
@@ -721,6 +735,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   var recState = {
     state: 'idle',            /* idle | arming | recording | processing */
     stream: null, recorder: null, chunks: [], mime: '', endKind: '',
+    upright: null,            /* rotated take: {stream, canvas, stop} of the upright canvas */
     lastTake: null,           /* {blob, mime, dur, cut, audioTracks, partial} */
     autoDownload: true
   };
@@ -784,6 +799,53 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     return recDest.stream.getAudioTracks()[0];
   }
 
+  /* ---------- STUDIO: rotated take ----------
+     Tab capture records the pixels on screen, so a 1080x1920 stage letterboxed into a
+     landscape window comes out ~540x960 — soft on the phone it is made for. When turning
+     the stage 90° gives it a bigger scale (>15%), the take plays rotated, the captured
+     frames are drawn back upright onto a canvas at the stage size, and the canvas is what
+     gets recorded. Stage-relative math goes through stageBox(), which knows the rotation. */
+  function wantsRotation() { return fitScale(true) > fitScale(false) * 1.15; }
+  function setRotated(on) {
+    ROT = !!on;
+    fit();
+    if (CUT) apply(t);
+  }
+  function uprightStream(stream, cropped) {
+    var video = document.createElement('video');
+    video.muted = true; video.playsInline = true;
+    video.srcObject = new MediaStream(stream.getVideoTracks());
+    var cv = document.createElement('canvas');
+    cv.width = STAGE.w; cv.height = STAGE.h;
+    var cx = cv.getContext('2d'), live = true;
+    (function draw() {
+      if (!live) return;
+      var vw = video.videoWidth, vh = video.videoHeight;
+      if (vw && vh) {
+        var sx = 0, sy = 0, sw = vw, sh = vh;
+        if (!cropped) { /* no Region Capture: cut the stage out of the whole tab */
+          var sr = stage.getBoundingClientRect(), kx = vw / window.innerWidth, ky = vh / window.innerHeight;
+          sx = sr.left * kx; sy = sr.top * ky; sw = sr.width * kx; sh = sr.height * ky;
+        }
+        cx.setTransform(1, 0, 0, 1, 0, 0);
+        cx.translate(0, cv.height); cx.rotate(-Math.PI / 2); /* undoes rotate(90deg) */
+        cx.drawImage(video, sx, sy, sw, sh, 0, 0, cv.height, cv.width);
+      }
+      requestAnimationFrame(draw);
+    })();
+    video.play().catch(function () {});
+    var out = cv.captureStream(60);
+    stream.getAudioTracks().forEach(function (a) { out.addTrack(a); });
+    return {
+      stream: out, canvas: cv,
+      stop: function () { live = false; video.srcObject = null; out.getVideoTracks().forEach(function (tr) { tr.stop(); }); }
+    };
+  }
+  function endRotation() {
+    if (recState.upright) { recState.upright.stop(); recState.upright = null; }
+    if (ROT) setRotated(false);
+  }
+
   function armCapture() {
     var opts = {
       video: { frameRate: { ideal: 60 } },
@@ -792,9 +854,10 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       selfBrowserSurface: 'include'
     };
     return navigator.mediaDevices.getDisplayMedia(opts).then(function (stream) {
-      var vt = stream.getVideoTracks()[0];
+      var vt = stream.getVideoTracks()[0], cropped = false;
+      if (wantsRotation()) setRotated(true);
       var crop = (window.CropTarget && CropTarget.fromElement && vt.cropTo)
-        ? CropTarget.fromElement(stage).then(function (ct) { return vt.cropTo(ct); }).catch(function () {})
+        ? CropTarget.fromElement(stage).then(function (ct) { return vt.cropTo(ct); }).then(function () { cropped = true; }).catch(function () {})
         : Promise.resolve();
       return crop.then(function () {
         var mixTrack = mixerAudioTrack();
@@ -805,15 +868,20 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
           else if (recState.state === 'arming') studioAbortArming();
         });
         recState.stream = stream;
+        if (ROT) {
+          recState.upright = uprightStream(stream, cropped);
+          toastInfo('rotated take: the film plays sideways so the file gets the full ' + STAGE.w + 'x' + STAGE.h + ' — it comes out upright');
+        }
       });
     });
   }
 
   function startRecorder() {
-    var withAudio = recState.stream.getAudioTracks().length > 0;
+    var src = recState.upright ? recState.upright.stream : recState.stream;
+    var withAudio = src.getAudioTracks().length > 0;
     recState.mime = pickMime(function (m) { return window.MediaRecorder && MediaRecorder.isTypeSupported(m); }, withAudio);
     recState.chunks = [];
-    recState.recorder = new MediaRecorder(recState.stream, {
+    recState.recorder = new MediaRecorder(src, {
       mimeType: recState.mime || undefined,
       videoBitsPerSecond: 14000000,
       audioBitsPerSecond: 192000
@@ -841,6 +909,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   function onRecorderStop() {
     var audioN = recState.stream ? recState.stream.getAudioTracks().length : 0;
     if (recState.stream) recState.stream.getTracks().forEach(function (tr) { tr.stop(); });
+    endRotation();
     var blob = new Blob(recState.chunks, { type: (recState.mime || 'video/webm').split(';')[0] });
     recState.lastTake = {
       blob: blob, mime: recState.mime || 'video/webm', dur: CUT.dur / RATE, cut: cutName,
@@ -926,6 +995,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   function studioAbortArming() {
     cancelCountdown(); /* aborting during the countdown must not let startRecorder fire */
     if (recState.stream) { recState.stream.getTracks().forEach(function (tr) { tr.stop(); }); recState.stream = null; }
+    endRotation();
     if (recState.state === 'arming') recState.state = 'idle';
     updateStudioUi();
   }
@@ -1345,7 +1415,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
      `#app.fmt-portrait` (phone bigger and centered, captions on top). Selector-anchored
      cursor waypoints follow the layout by themselves; coordinate ones go through
      FILM_FORMATS[name].mapXY when the film defines it. Takes record at the stage size
-     (a vertical take is 1080x1920 — what WhatsApp shows upright). Picked on the start
+     (a vertical take is 1080x1920 — what WhatsApp shows upright; on a landscape screen it
+     plays rotated during the take to get that resolution, see "rotated take"). Picked on the start
      screen, the pause menu or the controls; ?format=portrait; remembered per film. */
   var FORMATS = { landscape: { w: 1920, h: 1080, label: 'Landscape 16:9' }, portrait: { w: 1080, h: 1920, label: 'Vertical 9:16 (phone)' } };
   var FMT_HOOK = (typeof FILM_FORMATS !== 'undefined' && FILM_FORMATS) ? FILM_FORMATS : {};
@@ -1608,6 +1679,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     rec: studioRec,
     stop: function () { stopTake('partial'); },
     abort: studioAbortArming,
+    get rotated() { return ROT; },
+    rotate: setRotated,
+    upright: uprightStream,
     pickMime: pickMime,
     setMusic: setMusic,
     renderSynth: renderSynth,
