@@ -68,6 +68,25 @@ test('typing in the Openverse search does not trigger player shortcuts', async (
   expect(await page.evaluate(() => document.getElementById('mp-q').value)).toBe('rock f k r');
 });
 
+test('on a phone-sized window the music panel fills the width and its type grows', async ({ page }) => {
+  const read = async () => {
+    await page.click('#st-music');
+    return page.evaluate(() => {
+      const p = document.getElementById('music-panel').getBoundingClientRect();
+      const t = document.querySelector('.mp-title').getBoundingClientRect();
+      return { share: p.width / window.innerWidth, fits: p.width <= window.innerWidth, title: t.height };
+    });
+  };
+  await page.goto(PAGE);
+  const wide = await read();
+  await page.setViewportSize({ width: 412, height: 890 });
+  await page.goto(PAGE);
+  const phone = await read();
+  expect(phone.fits).toBe(true);
+  expect(phone.share).toBeGreaterThan(0.7); /* a 460px card on a 412px window read as a stamp */
+  expect(phone.title / wide.title).toBeGreaterThan(1.4);
+});
+
 test('the record button on the cut card records THAT cut; no menu mid-take', async ({ page }) => {
   await page.addInitScript(FAKE_GDM);
   await page.goto(PAGE);
