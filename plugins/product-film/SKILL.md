@@ -53,7 +53,8 @@ The reference engine (`references/engine-skeleton.html`) already comes complete 
 | Play/restart | 4·3·2·1 countdown (Space skips, Esc cancels) |
 | During play | Controls disappear IMMEDIATELY + `cursor: none`; only the bottom edge reveals them |
 | Stage click | Playing → pause + menu (Resume / Restart / Record / Music / Start screen); paused → resume. Menu NEVER shows mid-take |
-| Keyboard | Space/K, R restart, ←/→ ±2s, F fullscreen, Esc pause/close menu |
+| Keyboard | Space/K, R restart, ←/→ ±2s, F fullscreen, Esc pause/close menu, `[` / `]` speed |
+| Speed | `⏱ Speed` on the start screen, in the pause menu and in the controls: 0.5× · 0.67× · 0.75× · 1× · 1.25× · 1.5× (click = next, Shift+click = previous); `?speed=0.75`; remembered per film. Only the clock that advances `t` changes — seek/loop/captions stay f(t), a take records at the chosen speed, music keeps its tempo. Author the tables at 1×: pacing for slower readers is the viewer's choice, never a stretched timeline |
 | Stage | 1920×1080 fixed, black letterbox, scales to fit |
 | Loop | `t -= dur`; splice by texture/continuous frame, no hard cut |
 | In-page REC | ● arms capture ("this tab" + stage crop) → countdown → records t=0→end → downloads MP4/WebM |
