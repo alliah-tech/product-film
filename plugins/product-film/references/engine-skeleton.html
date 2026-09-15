@@ -993,6 +993,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       startOv.style.display = 'none';
       if (playing) pause();
       seek(0);
+      $('#st-toast').classList.remove('on'); /* a notice must not leak into the first frames:
+        the capture pipeline lags a few frames, so clearing it in startRecorder is too late */
       startCountdown(function () { startRecorder(); play(); });
       return true;
     }).catch(function (e) {

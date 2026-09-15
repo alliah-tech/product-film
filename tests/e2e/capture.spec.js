@@ -46,6 +46,20 @@ test('one-click PH take: starts at t=0, stops at the end, no audio, downloadable
   await expect(page.locator('#st-toast')).toBeVisible();
 });
 
+test('a toast from the last take is gone before the countdown, never in the first frames', async ({ page }) => {
+  await page.goto(PAGE);
+  await page.evaluate(() => { window.__film.studio.autoDownload = false; });
+  await page.evaluate(() => window.__film.studio.rec('ph'));
+  await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 15000 });
+  await page.keyboard.press('Escape'); /* partial take → toast on screen */
+  await page.waitForFunction(() => window.__film.studio.state === 'idle', null, { timeout: 10000 });
+  await expect(page.locator('#st-toast')).toBeVisible();
+  await page.evaluate(() => window.__film.studio.rec('ph'));
+  await page.waitForFunction(() => document.getElementById('countdown').classList.contains('on'), null, { timeout: 15000 });
+  await expect(page.locator('#st-toast')).toBeHidden(); /* the capture lags: clearing it at recorder start is too late */
+  await page.evaluate(() => window.__film.studio.abort());
+});
+
 test('Esc during the take → partial', async ({ page }) => {
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
