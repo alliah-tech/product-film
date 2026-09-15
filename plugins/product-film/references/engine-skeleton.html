@@ -110,6 +110,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 #countdown.on { display: flex; }
 #countdown .num { font-family: var(--font-display); font-weight: 300; font-size: 240px; line-height: 1; color: var(--color-text); }
 #countdown .cd-sub { font-family: var(--font-mono); font-size: 14px; color: var(--color-text-dim); letter-spacing: .08em; }
+#countdown .cd-fs { display: none; font-family: var(--font-mono); font-size: 18px; color: var(--color-text); letter-spacing: .04em; }
+#countdown.fs-off .cd-fs { display: block; }
+#app.fmt-portrait #countdown .cd-fs { zoom: 1.6; }
 
 /* Pause menu (stage click pauses; suppressed during a take) */
 #pause-menu { position: absolute; inset: 0; z-index: 96; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.45); }
@@ -222,7 +225,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     <div id="captions"><div id="cap-plate"><span class="pfx">&gt;</span><span class="ctx" id="cap-text"></span></div></div>
     <div id="cursor"></div>
     <div id="progress"><i id="prog-fill"></i></div>
-    <div id="countdown"><div class="num">4</div><div class="cd-sub">SPACE skips &middot; ESC cancels</div></div>
+    <div id="countdown"><div class="num">4</div><div class="cd-sub">SPACE skips &middot; ESC cancels</div><div class="cd-fs">Press F for fullscreen &mdash; the take is sharpest there</div></div>
 
     <div id="pause-menu">
       <div class="pm-box">
@@ -620,6 +623,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     var k = 4;
     cdNum.textContent = k;
     cdEl.classList.add('on');
+    cdEl.classList.toggle('fs-off', !document.fullscreenElement);
     controls.classList.remove('show');
     cdTimer = setInterval(function () {
       k--;
@@ -628,6 +632,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     }, 1000);
   }
   function finishCountdown(done) { clearInterval(cdTimer); counting = false; cdEl.classList.remove('on'); done && done(); }
+  document.addEventListener('fullscreenchange', function () { cdEl.classList.toggle('fs-off', !document.fullscreenElement); });
   function cancelCountdown() { if (!counting) return; clearInterval(cdTimer); counting = false; cdEl.classList.remove('on'); }
 
   function begin(name) { setCut(name); started = true; startOv.style.display = 'none'; t = 0; apply(0); startCountdown(play); }
@@ -658,6 +663,8 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   document.addEventListener('keydown', function (e) {
     var tg = e.target;
     if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT' || tg.isContentEditable)) return; /* typing in a field ≠ shortcuts */
+    /* mid-take only F works: pause, restart and seek would cut the take short */
+    if (recState.state === 'recording' && e.key !== 'f' && e.key !== 'F') return;
     if (counting) {
       if (e.key === ' ') { e.preventDefault(); finishCountdown(cdDone || play); }
       else if (e.key === 'Escape') { cancelCountdown(); studioOnCountdownCancel(); pokeControls(); }
@@ -711,7 +718,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   }
   stage.addEventListener('click', function (e) {
     if (!started || counting) return;
-    if (e.target.closest('.pm-box')) return;
+    /* the furniture lives in the stage: a click on it isn't a click on the film */
+    if (e.target.closest('.pm-box, #controls, #music-panel, #gif-panel, #st-toast, #fs-hint')) return;
+    if (recState.state === 'recording') return; /* mid-take a click must not end the take */
     if (playing) userPause();
     else { hidePauseMenu(); play(); }
   });
@@ -1170,11 +1179,17 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     if (!canRec() || recState.state !== 'idle') return Promise.resolve(false);
     stopPreview();
     if (cut) setCut(cut);
+    var wasFs = !!document.fullscreenElement;
     recState.state = 'arming';
     updateStudioUi();
     return prepMusic().then(function () {
       return armCapture();
     }).then(function () {
+      /* Chrome's share picker leaves fullscreen: go back if the take started there (the
+         countdown asks for F when the browser refuses without a fresh gesture) */
+      if (wasFs && !document.fullscreenElement) {
+        try { var rq = document.documentElement.requestFullscreen(); if (rq && rq.catch) rq.catch(function () {}); } catch (e) {}
+      }
       started = true;
       startOv.style.display = 'none';
       if (playing) pause();

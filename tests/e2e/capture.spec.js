@@ -51,7 +51,7 @@ test('a toast from the last take is gone before the countdown, never in the firs
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
   await page.evaluate(() => window.__film.studio.rec('ph'));
   await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 15000 });
-  await page.keyboard.press('Escape'); /* partial take → toast on screen */
+  await page.evaluate(() => document.getElementById('c-rec').click()); /* ● ends it → partial take → toast on screen */
   await page.waitForFunction(() => window.__film.studio.state === 'idle', null, { timeout: 10000 });
   await expect(page.locator('#st-toast')).toBeVisible();
   await page.evaluate(() => window.__film.studio.rec('ph'));
@@ -91,15 +91,29 @@ test('the take is a plain mp4: no fragments, moov before mdat, video track first
   expect(Math.abs(r.dur - r.expected)).toBeLessThan(1.5);
 });
 
-test('Esc during the take → partial', async ({ page }) => {
+test('mid-take a click on the film or the controls and Esc/Space/R/arrows do not cut the take; ● ends it', async ({ page }) => {
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });
   await page.evaluate(() => window.__film.studio.rec('ph'));
   await page.waitForFunction(() => window.__film.studio.state === 'recording', null, { timeout: 15000 });
-  await page.waitForTimeout(1500);
-  await page.keyboard.press('Escape');
+  await page.waitForTimeout(1000);
+  await page.mouse.click(400, 300);                                      /* a click on the film */
+  await page.evaluate(() => document.getElementById('c-full').click());  /* ⛶ lives inside the stage: it used to pause → cut */
+  for (const k of ['Escape', ' ', 'r', 'ArrowRight']) await page.keyboard.press(k);
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => window.__film.studio.state)).toBe('recording');
+  await page.evaluate(() => document.getElementById('c-rec').click());
   await page.waitForFunction(() => window.__film.studio.state === 'idle' && !!window.__film.studio.lastTake, null, { timeout: 10000 });
   expect(await page.evaluate(() => window.__film.studio.lastTake.partial)).toBe(true);
+});
+
+test('the countdown asks for F when the page is not fullscreen (the share picker leaves it)', async ({ page }) => {
+  await page.goto(PAGE);
+  await page.evaluate(() => { window.__film.studio.autoDownload = false; });
+  await page.evaluate(() => window.__film.studio.rec('ph'));
+  await page.waitForFunction(() => document.getElementById('countdown').classList.contains('on'), null, { timeout: 15000 });
+  await expect(page.locator('#countdown .cd-fs')).toBeVisible();
+  await page.evaluate(() => window.__film.studio.abort());
 });
 
 test('abort during the countdown neither crashes nor starts recording', async ({ page }) => {
