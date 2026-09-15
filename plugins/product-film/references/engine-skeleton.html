@@ -995,7 +995,14 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
       seek(0);
       $('#st-toast').classList.remove('on'); /* a notice must not leak into the first frames:
         the capture pipeline lags a few frames, so clearing it in startRecorder is too late */
-      startCountdown(function () { startRecorder(); play(); });
+      startCountdown(function () {
+        /* Same lag on the way in: start a beat AFTER the countdown clears, or the take
+           opens on the last countdown frame — which is the thumbnail every player shows. */
+        setTimeout(function () {
+          if (recState.state !== 'arming') return; /* aborted inside the gap */
+          startRecorder(); play();
+        }, 220);
+      });
       return true;
     }).catch(function (e) {
       studioAbortArming();
