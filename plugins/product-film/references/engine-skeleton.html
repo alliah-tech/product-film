@@ -43,7 +43,12 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 * { box-sizing: border-box; }
 #app { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; }
 
-/* ---------- Stage 1920×1080 fixed, scaled to fit (letterbox) ---------- */
+/* ---------- Stage 1920×1080 (or 1080×1920 in the vertical format), scaled to fit ---------- */
+#app.fmt-portrait #stage { width: 1080px; height: 1920px; }
+#app.fmt-portrait #start .s-cuts { flex-direction: column; }
+#app.fmt-portrait .cutbtn { width: 760px; }
+#app.fmt-portrait .s-studio { flex-wrap: wrap; justify-content: center; max-width: 900px; }
+#app.fmt-portrait #start .s-hints { flex-wrap: wrap; justify-content: center; max-width: 900px; }
 #stage {
   position: relative; width: 1920px; height: 1080px; flex: none;
   background: var(--color-bg); overflow: hidden;
@@ -212,6 +217,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
         <button class="pmbtn" id="pm-restart">&#8634;&ensp;Restart</button>
         <button class="pmbtn" id="pm-rec"><span class="rec-dot"></span>Record take</button>
         <button class="pmbtn" id="pm-music">&#9834;&ensp;Theme music&hellip;</button>
+        <button class="pmbtn" id="pm-format">&#9645;&ensp;Format: <span class="fmt-name">Landscape 16:9</span></button>
         <button class="pmbtn" id="pm-speed">&#9201;&ensp;Speed: <span class="spd-name">1&times;</span></button>
         <button class="pmbtn" id="pm-home">&#8962;&ensp;Start screen</button>
         <div class="pm-hint">Click the stage to resume &middot; Esc closes</div>
@@ -241,6 +247,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
         </div>
         <div class="s-studio" id="st-row">
           <button class="stbtn" id="st-music" title="Choose and audition the theme music">&#9834; Theme music: <span id="st-music-name">None</span></button>
+          <button class="stbtn" id="st-format" title="Playback and take format: landscape 16:9 or vertical 9:16 for phones (click toggles)">&#9645; Format: <span id="st-format-name">Landscape 16:9</span></button>
           <button class="stbtn" id="st-speed" title="Playback speed &mdash; also the speed of recorded takes (click: next &middot; Shift+click: previous &middot; [ and ] on the keyboard)">&#9201; Speed: <span id="st-speed-name">1&times;</span></button>
           <button class="stbtn" id="st-dl" title="Download this HTML to record locally" style="display:none">&#8595; Download the HTML</button>
         </div>
@@ -257,6 +264,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     <button id="c-cut">Cut: FULL</button>
     <button id="c-full">&#x26F6;</button>
     <button id="c-speed" title="Playback speed">1&times;</button>
+    <button id="c-format" title="Format: landscape 16:9 / vertical 9:16">16:9</button>
     <button id="c-rec">&#9679; REC</button>
   </div>
 
@@ -302,6 +310,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
      download button shown in embeds (recording needs the local file). */
   var SOURCE_HTML = '<!doctype html>\n' + document.documentElement.outerHTML;
   var $ = function (s) { return document.querySelector(s); };
+  var STAGE = { w: 1920, h: 1080 }, FORMAT = 'landscape'; /* see "format" below */
 
   /* ---------- easing (same curves as the product's) ---------- */
   function cubicBezier(x1, y1, x2, y2) {
@@ -334,7 +343,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
 
   /* ---------- stage fit (letterbox) ---------- */
   function fit() {
-    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    var s = Math.min(window.innerWidth / STAGE.w, window.innerHeight / STAGE.h);
     stage.style.transform = 'scale(' + s + ')';
     stage.style.transformOrigin = 'center center';
   }
@@ -347,7 +356,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     var el = typeof sel === 'string' ? $(sel) : sel;
     if (!el) return { x: 960, y: 540 };
     var r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-    var k = sr.width / 1920;
+    var k = sr.width / STAGE.w;
     return {
       x: (r.left - sr.left + r.width * (fx == null ? 0.5 : fx)) / k,
       y: (r.top - sr.top + r.height * (fy == null ? 0.5 : fy)) / k
@@ -449,9 +458,9 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
         var el = $(c.sel);
         if (el) {
           var r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-          var k = sr.width / 1920;
+          var k = sr.width / STAGE.w;
           var m = film.style.transform ? parseFloat((film.style.transform.match(/scale\(([\d.]+)\)/) || [0, 1])[1]) : 1;
-          var oc = (film.style.transformOrigin || '960px 540px').split(' ').map(parseFloat);
+          var oc = (film.style.transformOrigin || (STAGE.w / 2) + 'px ' + (STAGE.h / 2) + 'px').split(' ').map(parseFloat);
           var sx = (r.left - sr.left + r.width / 2) / k, sy = (r.top - sr.top + r.height / 2) / k;
           origin = ((sx - oc[0]) / m + oc[0]) + 'px ' + ((sy - oc[1]) / m + oc[1]) + 'px';
         }
@@ -470,7 +479,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     var el = $(d.sel);
     if (!el) { dimring.style.opacity = 0; return; }
     var r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-    var k = sr.width / 1920, pad = d.pad || 0;
+    var k = sr.width / STAGE.w, pad = d.pad || 0;
     dimring.style.left = ((r.left - sr.left) / k - pad) + 'px';
     dimring.style.top = ((r.top - sr.top) / k - pad) + 'px';
     dimring.style.width = (r.width / k + pad * 2) + 'px';
@@ -497,7 +506,11 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
   var ripLayer = document.createElement('div');
   ripLayer.style.cssText = 'position:absolute;inset:0;z-index:58;pointer-events:none;';
   stage.appendChild(ripLayer);
-  function wayPos(w) { return w.sel ? stagePos(w.sel, w.fx, w.fy) : { x: w.x, y: w.y }; }
+  function wayPos(w) {
+    if (w.sel) return stagePos(w.sel, w.fx, w.fy);
+    var m = FMT_HOOK[FORMAT] && FMT_HOOK[FORMAT].mapXY;
+    return m ? m(w.x, w.y) : { x: w.x, y: w.y };
+  }
   function applyCursor(t) {
     var cw = CUT.cursor;
     var vis = t >= cw.showW[0] && t <= cw.showW[1];
@@ -1327,7 +1340,42 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     setSpeed(new URLSearchParams(location.search).get('speed') || saved || 1);
   })();
 
-  window.__film = { seek: seek, play: play, pause: pause, restart: restart, home: goHome, fs: toggleFs, setCut: function (n) { setCut(n); seek(0); }, get t() { return t; }, get speed() { return RATE; }, setSpeed: setSpeed };
+  /* ---------- format: landscape 16:9 (1920x1080) or vertical 9:16 (1080x1920, phone) ----------
+     The stage changes size and #app gets `fmt-<name>`; the film restyles its scenes under
+     `#app.fmt-portrait` (phone bigger and centered, captions on top). Selector-anchored
+     cursor waypoints follow the layout by themselves; coordinate ones go through
+     FILM_FORMATS[name].mapXY when the film defines it. Takes record at the stage size
+     (a vertical take is 1080x1920 — what WhatsApp shows upright). Picked on the start
+     screen, the pause menu or the controls; ?format=portrait; remembered per film. */
+  var FORMATS = { landscape: { w: 1920, h: 1080, label: 'Landscape 16:9' }, portrait: { w: 1080, h: 1920, label: 'Vertical 9:16 (phone)' } };
+  var FMT_HOOK = (typeof FILM_FORMATS !== 'undefined' && FILM_FORMATS) ? FILM_FORMATS : {};
+  function formatKey() { return 'pf-format:' + (document.title || location.pathname); }
+  function setFormat(name) {
+    if (!FORMATS[name]) return;
+    FORMAT = name;
+    STAGE.w = FORMATS[name].w; STAGE.h = FORMATS[name].h;
+    stage.style.width = STAGE.w + 'px'; stage.style.height = STAGE.h + 'px';
+    Object.keys(FORMATS).forEach(function (n) { app.classList.toggle('fmt-' + n, n === name); });
+    var lbl = FORMATS[name].label;
+    $('#st-format-name').textContent = lbl;
+    $('#pm-format .fmt-name').textContent = lbl;
+    $('#c-format').textContent = name === 'portrait' ? '9:16' : '16:9';
+    try { localStorage.setItem(formatKey(), name); } catch (e) {}
+    fit();
+    if (CUT) apply(t);
+  }
+  function toggleFormat() { setFormat(FORMAT === 'portrait' ? 'landscape' : 'portrait'); }
+  ['#st-format', '#pm-format', '#c-format'].forEach(function (s) {
+    $(s).addEventListener('click', function (e) { e.stopPropagation(); toggleFormat(); });
+  });
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem(formatKey()); } catch (e) {}
+    var q = new URLSearchParams(location.search).get('format');
+    setFormat(FORMATS[q] ? q : (FORMATS[saved] ? saved : 'landscape'));
+  })();
+
+  window.__film = { seek: seek, play: play, pause: pause, restart: restart, home: goHome, fs: toggleFs, setCut: function (n) { setCut(n); seek(0); }, get t() { return t; }, get speed() { return RATE; }, setSpeed: setSpeed, get format() { return FORMAT; }, setFormat: setFormat };
 
   /* ---------- STUDIO: audition (panel previews; never wired into recDest,
      so a preview can't leak into a take) ---------- */

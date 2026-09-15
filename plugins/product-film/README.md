@@ -35,7 +35,9 @@ synthesized tracks with ▶ audition, local MP3 or CC search on Openverse with c
 credit; the panel reminds that Product Hunt autoplays muted). From the take you can
 derive a GIF (256 palette + dithering) right in the browser. A `⏱ Speed` picker (start
 screen, pause menu, controls, `[`/`]`) plays the film from 0.5× to 1.5× — and records the
-take at that speed — without touching the timeline. In the artifact preview
+take at that speed — without touching the timeline. A `▭ Format` toggle switches the stage
+between landscape 16:9 and vertical 9:16 (phone) — the film restyles its scenes under
+`#app.fmt-portrait` and the take comes out upright for WhatsApp. In the artifact preview
 (iframe) recording is blocked by the browser — the start screen offers a ⬇ button that
 downloads the HTML itself; open it locally and record.
 
