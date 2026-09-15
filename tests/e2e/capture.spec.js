@@ -60,6 +60,37 @@ test('a toast from the last take is gone before the countdown, never in the firs
   await page.evaluate(() => window.__film.studio.abort());
 });
 
+test('the take is a plain mp4: no fragments, moov before mdat, video track first, full length', async ({ page }) => {
+  await page.goto(PAGE + '?format=portrait');
+  const mime = await page.evaluate(() => window.__film.studio.pickMime((m) => MediaRecorder.isTypeSupported(m), false));
+  test.skip(mime.indexOf('mp4') === -1, 'this browser records webm');
+  await page.evaluate(() => { window.__film.studio.autoDownload = false; });
+  await page.evaluate(() => window.__film.studio.rec('ph'));
+  await page.waitForFunction(() => window.__film.studio.state === 'idle' && !!window.__film.studio.lastTake, null, { timeout: 60000 });
+  const r = await page.evaluate(async () => {
+    const tk = window.__film.studio.lastTake;
+    const u8 = new Uint8Array(await tk.blob.arrayBuffer()), dv = new DataView(u8.buffer);
+    const cc = (o) => String.fromCharCode(u8[o], u8[o + 1], u8[o + 2], u8[o + 3]);
+    const top = [];
+    for (let o = 0; o + 8 <= u8.length;) { const s = dv.getUint32(o); top.push(cc(o + 4)); if (s < 8) break; o += s; }
+    let h = 0; /* the first hdlr in the file belongs to the first trak */
+    while (h < u8.length - 4 && cc(h) !== 'hdlr') h++;
+    let k = 0; /* the first tkhd: width/height are the last 8 bytes (16.16) */
+    while (k < u8.length - 4 && cc(k) !== 'tkhd') k++;
+    const tkEnd = k - 4 + dv.getUint32(k - 4);
+    const v = document.createElement('video');
+    v.src = URL.createObjectURL(tk.blob);
+    await new Promise((res) => { v.onloadedmetadata = res; });
+    return { top, firstTrack: cc(h + 12), w: dv.getUint32(tkEnd - 8) >>> 16, h: dv.getUint32(tkEnd - 4) >>> 16,
+             dur: v.duration, expected: tk.dur, plainError: tk.plainError || null };
+  });
+  expect(r.plainError).toBe(null);
+  expect(r.top).toEqual(['ftyp', 'moov', 'mdat']); /* Chrome's own file: ftyp moov (moof mdat)… mfra */
+  expect(r.firstTrack).toBe('vide');                /* Chrome lists audio first — WhatsApp then finds no frame size */
+  expect([r.w, r.h]).toEqual([1080, 1920]);
+  expect(Math.abs(r.dur - r.expected)).toBeLessThan(1.5);
+});
+
 test('Esc during the take → partial', async ({ page }) => {
   await page.goto(PAGE);
   await page.evaluate(() => { window.__film.studio.autoDownload = false; });

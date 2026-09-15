@@ -916,20 +916,206 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     if (playing) pause();
   }
 
+  /* ---------- STUDIO: plain mp4 ----------
+     MediaRecorder's mp4 is FRAGMENTED — an empty sample index in moov, then moof+mdat pieces
+     — and Chrome lists the audio track first (0x0). Readers that trust the header get it
+     wrong: Windows shows a bogus length, WhatsApp can't find the frame size and boxes a 9:16
+     take as landscape. This rewrites the same samples, byte for byte (no re-encode), as a
+     plain mp4: ftyp + moov (full sample tables, video track first) + one mdat. */
+  function plainMp4(buf) {
+    var src = new Uint8Array(buf), dv = new DataView(buf);
+    function u32(o) { return dv.getUint32(o); }
+    function u64(o) { return dv.getUint32(o) * 4294967296 + dv.getUint32(o + 4); }
+    function cc(o) { return String.fromCharCode(src[o], src[o + 1], src[o + 2], src[o + 3]); }
+    function boxes(start, end) {
+      var out = [], o = start;
+      while (o + 8 <= end) {
+        var size = u32(o), hdr = 8;
+        if (size === 1) { size = u64(o + 8); hdr = 16; } else if (size === 0) size = end - o;
+        if (size < hdr || o + size > end) break;
+        out.push({ type: cc(o + 4), start: o, body: o + hdr, end: o + size });
+        o += size;
+      }
+      return out;
+    }
+    function kids(b) { return boxes(b.body, b.end); }
+    function find(list, t) { for (var i = 0; i < list.length; i++) if (list[i].type === t) return list[i]; return null; }
+    function v1(b) { return src[b.body] === 1; }
+
+    /* writer */
+    function bytes(n) { return new Uint8Array(n); }
+    function join(parts) {
+      var n = 0, i, o, k = 0;
+      for (i = 0; i < parts.length; i++) n += parts[i].length;
+      o = bytes(n);
+      for (i = 0; i < parts.length; i++) { o.set(parts[i], k); k += parts[i].length; }
+      return o;
+    }
+    function words(list) { /* u32 list; {hi,lo} for u64 */
+      var o = bytes(list.length * 4), w = new DataView(o.buffer);
+      list.forEach(function (x, i) { w.setUint32(i * 4, x >>> 0); });
+      return o;
+    }
+    function box(type, parts) {
+      var body = join(parts), o = bytes(8 + body.length), w = new DataView(o.buffer);
+      w.setUint32(0, o.length);
+      for (var i = 0; i < 4; i++) o[4 + i] = type.charCodeAt(i);
+      o.set(body, 8);
+      return o;
+    }
+    function fullBox(type, version, flags, list) { return box(type, [words([(version << 24) | flags].concat(list))]); }
+    function copy(b) { return src.slice(b.start, b.end); }
+    function setDur(boxCopy, b, off32, off64, value) { /* duration field of mvhd/mdhd/tkhd */
+      var w = new DataView(boxCopy.buffer), at = (b.body - b.start) + (v1(b) ? off64 : off32);
+      if (v1(b)) { w.setUint32(at, Math.floor(value / 4294967296)); w.setUint32(at + 4, value >>> 0); }
+      else w.setUint32(at, Math.min(value, 4294967295) >>> 0);
+      return boxCopy;
+    }
+
+    var top = boxes(0, src.length), moov = find(top, 'moov');
+    if (!moov) throw new Error('no moov');
+    var mk = kids(moov), mvhd = find(mk, 'mvhd');
+    var movieScale = u32(mvhd.body + (v1(mvhd) ? 20 : 12));
+    var trex = {}, mvex = find(mk, 'mvex');
+    if (mvex) kids(mvex).forEach(function (b) {
+      if (b.type === 'trex') trex[u32(b.body + 4)] = { dur: u32(b.body + 12), size: u32(b.body + 16), flags: u32(b.body + 20) };
+    });
+    var tracks = {}, list = [];
+    mk.forEach(function (b) {
+      if (b.type !== 'trak') return;
+      var tk = kids(b), tkhd = find(tk, 'tkhd'), mdia = find(tk, 'mdia'), md = kids(mdia);
+      var mdhd = find(md, 'mdhd'), hdlr = find(md, 'hdlr'), minf = find(md, 'minf'), mi = kids(minf);
+      var tr = {
+        id: u32(tkhd.body + (v1(tkhd) ? 20 : 12)), tkhd: tkhd, mdhd: mdhd, hdlr: hdlr,
+        handler: cc(hdlr.body + 8), rest: mi.filter(function (x) { return x.type !== 'stbl'; }),
+        stsd: find(kids(find(mi, 'stbl')), 'stsd'), scale: u32(mdhd.body + (v1(mdhd) ? 20 : 12)),
+        sizes: [], durs: [], ctos: [], sync: [], chunks: [], start: null, allSync: true, neg: false
+      };
+      tracks[tr.id] = tr; list.push(tr);
+    });
+
+    top.forEach(function (mf) {
+      if (mf.type !== 'moof') return;
+      kids(mf).forEach(function (traf) {
+        if (traf.type !== 'traf') return;
+        var tb = kids(traf), tfhd = find(tb, 'tfhd');
+        var fl = u32(tfhd.body) & 0xffffff, p = tfhd.body + 4, tr = tracks[u32(p)];
+        var dx = trex[tr.id] || { dur: 0, size: 0, flags: 0 }, base = mf.start;
+        var dDur = dx.dur, dSize = dx.size, dFlags = dx.flags;
+        p += 4;
+        if (fl & 0x1) { base = u64(p); p += 8; }
+        if (fl & 0x2) p += 4;
+        if (fl & 0x8) { dDur = u32(p); p += 4; }
+        if (fl & 0x10) { dSize = u32(p); p += 4; }
+        if (fl & 0x20) { dFlags = u32(p); p += 4; }
+        var tfdt = find(tb, 'tfdt');
+        if (tfdt && tr.start === null) tr.start = v1(tfdt) ? u64(tfdt.body + 4) : u32(tfdt.body + 4);
+        var cursor = base;
+        tb.forEach(function (trun) {
+          if (trun.type !== 'trun') return;
+          var ver = src[trun.body], tf = u32(trun.body) & 0xffffff, n = u32(trun.body + 4), q = trun.body + 8;
+          var off = cursor, first = null, len = 0;
+          if (tf & 0x1) { off = base + dv.getInt32(q); q += 4; }
+          if (tf & 0x4) { first = u32(q); q += 4; }
+          for (var i = 0; i < n; i++) {
+            var d = dDur, s = dSize, f = dFlags, c = 0;
+            if (tf & 0x100) { d = u32(q); q += 4; }
+            if (tf & 0x200) { s = u32(q); q += 4; }
+            if (tf & 0x400) { f = u32(q); q += 4; }
+            if (tf & 0x800) { c = ver === 1 ? dv.getInt32(q) : u32(q); q += 4; }
+            if (i === 0 && first !== null) f = first;
+            tr.sizes.push(s); tr.durs.push(d); tr.ctos.push(c);
+            if (c < 0) tr.neg = true;
+            if ((f >>> 16) & 1) tr.allSync = false; else tr.sync.push(tr.sizes.length);
+            len += s;
+          }
+          tr.chunks.push({ src: off, len: len, n: n });
+          cursor = off + len;
+        });
+      });
+    });
+
+    function runs(values) { /* [count, value] pairs */
+      var out = [];
+      values.forEach(function (x) {
+        if (out.length && out[out.length - 2 + 1] === x) out[out.length - 2]++;
+        else out.push(1, x);
+      });
+      return out;
+    }
+    var chunks = [];
+    list.forEach(function (tr) { tr.chunks.forEach(function (c) { c.tr = tr; chunks.push(c); }); });
+    chunks.sort(function (a, b) { return a.src - b.src; });
+    var mdatLen = 0;
+    chunks.forEach(function (c) { c.pos = mdatLen; mdatLen += c.len; });
+    var big = mdatLen + 16 > 4294967295, mdatHdr = big ? 16 : 8;
+    var ftyp = box('ftyp', [words([0x69736f6d, 512, 0x69736f6d, 0x69736f32, 0x61766331, 0x6d703431])]); /* isom · iso2 avc1 mp41 */
+
+    function buildMoov(shift) {
+      var movieDur = 0;
+      var traks = list.slice().sort(function (a, b) { return (a.handler === 'vide' ? 0 : 1) - (b.handler === 'vide' ? 0 : 1); })
+        .filter(function (tr) { return tr.sizes.length; })
+        .map(function (tr) {
+          var mediaDur = tr.durs.reduce(function (a, b) { return a + b; }, 0);
+          var lead = Math.round((tr.start || 0) * movieScale / tr.scale);
+          var inMovie = Math.round(mediaDur * movieScale / tr.scale);
+          movieDur = Math.max(movieDur, lead + inMovie);
+          var stbl = [copy(tr.stsd), fullBox('stts', 0, 0, (function (r) { return [r.length / 2].concat(r); })(runs(tr.durs)))];
+          if (tr.ctos.some(function (c) { return c !== 0; })) {
+            var cr = runs(tr.ctos);
+            stbl.push(fullBox('ctts', tr.neg ? 1 : 0, 0, [cr.length / 2].concat(cr)));
+          }
+          if (!tr.allSync) stbl.push(fullBox('stss', 0, 0, [tr.sync.length].concat(tr.sync)));
+          var stsc = [], prev = -1;
+          tr.chunks.forEach(function (c, i) { if (c.n !== prev) { stsc.push(i + 1, c.n, 1); prev = c.n; } });
+          stbl.push(fullBox('stsc', 0, 0, [stsc.length / 3].concat(stsc)));
+          stbl.push(fullBox('stsz', 0, 0, [0, tr.sizes.length].concat(tr.sizes)));
+          if (big) {
+            var co = [tr.chunks.length];
+            tr.chunks.forEach(function (c) { var a = shift + c.pos; co.push(Math.floor(a / 4294967296), a >>> 0); });
+            stbl.push(fullBox('co64', 0, 0, co));
+          } else {
+            stbl.push(fullBox('stco', 0, 0, [tr.chunks.length].concat(tr.chunks.map(function (c) { return shift + c.pos; }))));
+          }
+          var parts = [setDur(copy(tr.tkhd), tr.tkhd, 20, 28, lead + inMovie)];
+          if (lead) parts.push(box('edts', [fullBox('elst', 0, 0, [2, lead, 0xffffffff, 0x10000, inMovie, 0, 0x10000])]));
+          parts.push(box('mdia', [setDur(copy(tr.mdhd), tr.mdhd, 16, 24, mediaDur), copy(tr.hdlr),
+            box('minf', tr.rest.map(copy).concat([box('stbl', stbl)]))]));
+          return box('trak', parts);
+        });
+      return box('moov', [setDur(copy(mvhd), mvhd, 16, 24, movieDur)].concat(traks));
+    }
+    var moovLen = buildMoov(0).length;
+    var newMoov = buildMoov(ftyp.length + moovLen + mdatHdr);
+    var head = bytes(mdatHdr), hv = new DataView(head.buffer);
+    if (big) { hv.setUint32(0, 1); hv.setUint32(8, Math.floor((mdatLen + 16) / 4294967296)); hv.setUint32(12, (mdatLen + 16) >>> 0); }
+    else hv.setUint32(0, mdatLen + 8);
+    head.set([0x6d, 0x64, 0x61, 0x74], 4);
+    return [ftyp, newMoov, head].concat(chunks.map(function (c) { return src.subarray(c.src, c.src + c.len); }));
+  }
+
   function onRecorderStop() {
     var audioN = recState.stream ? recState.stream.getAudioTracks().length : 0;
     if (recState.stream) recState.stream.getTracks().forEach(function (tr) { tr.stop(); });
     endRotation();
     var blob = new Blob(recState.chunks, { type: (recState.mime || 'video/webm').split(';')[0] });
-    recState.lastTake = {
+    var take = {
       blob: blob, mime: recState.mime || 'video/webm', dur: CUT.dur / RATE, cut: cutName,
       audioTracks: audioN, partial: recState.endKind !== 'end'
     };
     recState.stream = null; recState.recorder = null; recState.chunks = [];
-    recState.state = 'idle';
-    if (recState.autoDownload) downloadTake();
-    toastTake();
-    updateStudioUi();
+    /* state stays 'processing' while the mp4 is rewritten as a plain one (see plainMp4);
+       if that fails, the take keeps the recorder's own file */
+    var plain = extFor(take.mime) !== 'mp4' ? Promise.resolve() : blob.arrayBuffer().then(function (buf) {
+      take.blob = new Blob(plainMp4(buf), { type: 'video/mp4' });
+    }).catch(function (e) { take.plainError = String((e && e.message) || e); });
+    plain.then(function () {
+      recState.lastTake = take;
+      recState.state = 'idle';
+      if (recState.autoDownload) downloadTake();
+      toastTake();
+      updateStudioUi();
+    });
   }
 
   function downloadTake() {
@@ -1702,6 +1888,7 @@ html, body { margin: 0; padding: 0; height: 100%; background: #000 !important; o
     rotate: setRotated,
     upright: uprightStream,
     pickMime: pickMime,
+    plainMp4: plainMp4,
     setMusic: setMusic,
     renderSynth: renderSynth,
     openverseSearch: openverseSearch,
